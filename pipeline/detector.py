@@ -27,6 +27,8 @@ class Detection:
     bbox: tuple[int, int, int, int]  # (x1, y1, x2, y2)
     confidence: float
     crop: np.ndarray | None = None   # 裁剪的图像区域
+    crop_offset: tuple[int, int] = (0, 0)  # crop 在原始帧中的偏移 (offset_x, offset_y)
+    hull_number_boxes: list[tuple[int, int, int, int]] | None = None  # 弦号定位框（帧坐标）
 
 
 def _build_tracker_yaml(
@@ -210,6 +212,7 @@ class ShipDetector:
                 bbox=(x1, y1, x2, y2),
                 confidence=conf,
                 crop=crop,
+                crop_offset=(cx1, cy1),
             ))
 
         if detections:

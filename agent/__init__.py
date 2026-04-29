@@ -14,6 +14,7 @@ from langgraph.prebuilt import create_react_agent
 from config import load_config
 from database import ShipDatabase
 from tools import build_tools
+from agent.result import AgentResult  # noqa: F401 — 重新导出供外部使用
 
 logger = logging.getLogger(__name__)
 
@@ -39,24 +40,6 @@ SYSTEM_PROMPT = """你是船弦号识别助手。输入中已包含 VLM 预识�
 """
 
 # ── 无 Few-shot 示例（避免误导 Agent）──
-
-
-class AgentResult:
-    """Agent 运行结果，包含结构化信息供 pipeline 使用。"""
-
-    def __init__(
-        self,
-        hull_number: str = "",
-        description: str = "",
-        match_type: str = "none",
-        semantic_match_ids: list[str] | None = None,
-        answer: str = "",
-    ):
-        self.hull_number = hull_number
-        self.description = description
-        self.match_type = match_type        # "exact" | "semantic" | "none"
-        self.semantic_match_ids = semantic_match_ids or []
-        self.answer = answer
 
 
 class ShipHullAgent:

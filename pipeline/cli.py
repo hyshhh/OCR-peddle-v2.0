@@ -10,6 +10,7 @@ Pipeline CLI — 视频处理命令行入口
     python -m pipeline.cli rtsp://192.168.1.100/stream
     python -m pipeline.cli video.mp4 --demo --output result.mp4
     python -m pipeline.cli video.mp4 --concurrent --max-concurrent 8
+    python -m pipeline.cli video.mp4 --hull-locator    # 启用弦号定位
 """
 
 from __future__ import annotations
@@ -62,20 +63,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        "--agent",
-        action="store_true",
-        default=None,
-        help="使用 LangChain Agent 模式（lookup + retrieve 两步工具链编排）",
-    )
-
-    parser.add_argument(
-        "--no-agent",
-        action="store_true",
-        default=None,
-        help="使用硬编码模式（直接调用 VLM + 查库 + 语义检索）",
-    )
-
-    parser.add_argument(
         "--no-screenshots",
         action="store_true",
         default=None,
@@ -86,7 +73,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-concurrent",
         type=int,
         default=None,
-        help="最大并发 Agent 推理数（默认沿用 config.yaml，通常 4）",
+        help="最大并发推理数（默认沿用 config.yaml，通常 4）",
     )
 
     parser.add_argument(
@@ -165,6 +152,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--hull-locator",
+        action="store_true",
+        default=None,
+        help="启用弦号定位（PaddleOCR TextDetection，在 crop 中定位文字区域）",
+    )
+
+    parser.add_argument(
+        "--no-hull-locator",
+        action="store_true",
+        default=None,
+        help="禁用弦号定位",
+    )
+
+    parser.add_argument(
         "--verbose", "-v",
         action="store_true",
         help="详细日志输出",
@@ -218,13 +219,7 @@ def main() -> None:
     if args.no_screenshots is not None:
         config["pipeline"]["save_screenshots"] = not args.no_screenshots
 
-    # 处理 --agent / --no-agent 开关（命令行优先于 config）
-    if args.agent is not None:
-        config["pipeline"]["use_agent"] = args.agent
-    elif args.no_agent is not None:
-        config["pipeline"]["use_agent"] = not args.no_agent
-
-    # 处理 --enable-refresh / --no-refresh 开关（命令行优先于 config）
+    # 处理 --enable-refresh / --no-refresh 开关
     if args.enable_refresh is not None:
         config["pipeline"]["enable_refresh"] = args.enable_refresh
     elif args.no_refresh is not None:
@@ -234,8 +229,14 @@ def main() -> None:
     if args.gap_num is not None:
         config["pipeline"]["gap_num"] = max(1, args.gap_num)
 
+    # 处理 --hull-locator / --no-hull-locator 开关
+    config.setdefault("hull_locator", {})
+    if args.hull_locator is not None:
+        config["hull_locator"]["enabled"] = args.hull_locator
+    elif args.no_hull_locator is not None:
+        config["hull_locator"]["enabled"] = not args.no_hull_locator
+
     # 读取最终配置
-    use_agent = config["pipeline"].get("use_agent", False)
     enable_refresh = config["pipeline"].get("enable_refresh", False)
     gap_num = config["pipeline"].get("gap_num", 150)
     concurrent_mode = config["pipeline"].get("concurrent_mode", False)
@@ -243,6 +244,7 @@ def main() -> None:
     prompt_mode = config["pipeline"].get("prompt_mode", "detailed")
     demo_enabled = config["pipeline"].get("demo", False)
     yolo_model = config["pipeline"].get("yolo_model", "yolov8n.pt")
+    hull_locator_enabled = config.get("hull_locator", {}).get("enabled", False)
 
     # 显示启动信息
     console.print(Panel(
@@ -250,10 +252,10 @@ def main() -> None:
         f"输入源: [cyan]{args.source}[/cyan]\n"
         f"模式: [{'green' if concurrent_mode else 'yellow'}]"
         f"{'并发' if concurrent_mode else '级联'}[/]\n"
-        f"推理: [{'magenta' if use_agent else 'blue'}]"
-        f"{'Agent (LangChain)' if use_agent else '硬编码 (直接调用)'}[/]\n"
+        f"推理: [blue]硬编码 (VLM + 查库 + 语义检索)[/blue]\n"
         f"并发数: {max_concurrent}\n"
         f"定时刷新: {'[green]开启[/green] (每%d帧)' % gap_num if enable_refresh else '[dim]关闭[/dim]'}\n"
+        f"弦号定位: {'[green]开启[/green] (PaddleOCR)' if hull_locator_enabled else '[dim]关闭[/dim]'}\n"
         f"提示词: {prompt_mode}\n"
         f"Demo: {'[green]开启[/green]' if demo_enabled else '[dim]关闭[/dim]'}\n"
         f"YOLO: {yolo_model}",

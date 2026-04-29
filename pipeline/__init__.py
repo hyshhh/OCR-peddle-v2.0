@@ -3,6 +3,7 @@ Pipeline 模块 — 船弦号识别视频处理流水线
 
 核心组件：
   - ShipDetector: YOLO 船只检测与跟踪
+  - HullNumberLocator: 弦号定位（PaddleOCR TextDetection）
   - AgentResult: 识别结果结构
   - TrackManager: 跟踪状态管理（track ID → 弦号绑定）
   - ShipPipeline: 主流水线编排（级联/并发双模式）
@@ -13,7 +14,8 @@ Pipeline 模块 — 船弦号识别视频处理流水线
 """
 
 from pipeline.detector import ShipDetector  # noqa: F401
-from agent import AgentResult  # noqa: F401
+from pipeline.locator import HullNumberLocator  # noqa: F401
+from agent.result import AgentResult  # noqa: F401
 from pipeline.tracker import TrackManager  # noqa: F401
 from pipeline.pipeline import ShipPipeline  # noqa: F401
 from pipeline.fps import FPSMeter, LatencyMeter  # noqa: F401
@@ -23,6 +25,7 @@ from pipeline.output import ScreenshotSaver  # noqa: F401
 
 __all__ = [
     "ShipDetector",
+    "HullNumberLocator",
     "AgentResult",
     "TrackManager",
     "ShipPipeline",

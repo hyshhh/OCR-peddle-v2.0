@@ -140,6 +140,10 @@ class DemoRenderer:
         for det in detections:
             self._render_detection(canvas, det, tracks.get(det.track_id))
 
+            # 渲染弦号定位虚线框
+            if det.hull_number_boxes:
+                self._render_hull_number_boxes(canvas, det.hull_number_boxes)
+
         # 渲染 HUD
         if self._show_fps and fps_info:
             self._render_hud(canvas, fps_info, frame_id, queue_depth, max_queue)
@@ -204,6 +208,54 @@ class DemoRenderer:
     @staticmethod
     def _get_display_text(track_info: Any) -> str:
         """获取显示文本。"""
+
+    def _render_hull_number_boxes(
+        self,
+        canvas: np.ndarray,
+        boxes: list[tuple[int, int, int, int]],
+    ) -> None:
+        """在帧上绘制弦号定位的虚线框（青色）。"""
+        dash_len = 10
+        gap_len = 6
+        color = (255, 255, 0)  # 青色 (BGR)
+        thickness = 2
+
+        for (x1, y1, x2, y2) in boxes:
+            # 四条边分别画虚线
+            edges = [
+                ((x1, y1), (x2, y1)),  # 上
+                ((x2, y1), (x2, y2)),  # 右
+                ((x2, y2), (x1, y2)),  # 下
+                ((x1, y2), (x1, y1)),  # 左
+            ]
+            for (sx, sy), (ex, ey) in edges:
+                self._draw_dashed_line(canvas, sx, sy, ex, ey, color, thickness, dash_len, gap_len)
+
+    @staticmethod
+    def _draw_dashed_line(
+        img: np.ndarray,
+        x1: int, y1: int,
+        x2: int, y2: int,
+        color: tuple[int, int, int],
+        thickness: int = 2,
+        dash_len: int = 10,
+        gap_len: int = 6,
+    ) -> None:
+        """在图像上绘制一条虚线。"""
+        dx = x2 - x1
+        dy = y2 - y1
+        length = max(int((dx ** 2 + dy ** 2) ** 0.5), 1)
+        ux, uy = dx / length, dy / length
+
+        dist = 0.0
+        while dist < length:
+            start_x = int(x1 + ux * dist)
+            start_y = int(y1 + uy * dist)
+            end_dist = min(dist + dash_len, length)
+            end_x = int(x1 + ux * end_dist)
+            end_y = int(y1 + uy * end_dist)
+            cv2.line(img, (start_x, start_y), (end_x, end_y), color, thickness)
+            dist = end_dist + gap_len
         if not getattr(track_info, "recognized", False):
             return "(识别中...)" if getattr(track_info, "pending", False) else ""
 

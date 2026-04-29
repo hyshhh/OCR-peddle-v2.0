@@ -57,13 +57,8 @@ pipeline:
   # 提示词模式："detailed"（详细）或 "brief"（简略）
   prompt_mode: "detailed"
 
-  # Agent/硬编码双模式开关
-  # false = 硬编码模式：直接调用 VLM + 查库 + 语义检索，无 LLM Agent 编排
-  # true  = Agent 模式：通过 LangChain ReAct Agent 链路调用 3 个工具（recognize_ship → lookup → retrieve）
-  use_agent: false
-
-  # 定时刷新开关：true 则每隔 gap_num 帧对已识别的 track 重新进行 Agent 识别
-  # false 则仅在新 track 出现时识别一次（现有逻辑不变）
+  # 定时刷新开关：true 则每隔 gap_num 帧对已识别的 track 重新进行识别
+  # false 则仅在新 track 出现时识别一次
   enable_refresh: false
 
   # 刷新间隔帧数（仅在 enable_refresh=true 时生效）
@@ -106,3 +101,12 @@ pipeline:
 
   # 超过此帧数未出现的 track 被清理
   max_stale_frames: 300
+
+# 弦号定位配置（PaddleOCR TextDetection）
+hull_locator:
+  # 弦号定位开关：true 启用 PaddleOCR 文字检测定位
+  enabled: false
+  # 文字检测置信度阈值
+  score_threshold: 0.5
+  # 最小文字区域面积（像素²），过滤噪声
+  min_area: 100

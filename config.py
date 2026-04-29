@@ -42,7 +42,6 @@ _DEFAULTS: dict[str, Any] = {
         "output_dir": "./output",
         "save_screenshots": True,
         "prompt_mode": "detailed",
-        "use_agent": False,
         "enable_refresh": False,
         "gap_num": 150,
         "demo": False,
@@ -60,6 +59,11 @@ _DEFAULTS: dict[str, Any] = {
         },
         "detect_classes": [8],
         "max_stale_frames": 300,
+    },
+    "hull_locator": {
+        "enabled": False,
+        "score_threshold": 0.5,
+        "min_area": 100,
     },
     "app": {
         "log_level": "INFO",

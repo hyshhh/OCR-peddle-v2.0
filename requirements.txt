@@ -1,0 +1,37 @@
+# Ship Hull Recognition System - Requirements
+# Integrates: project-v6 (YOLO + VLM + RAG) + PaddleOCR TextDetection
+
+# ── Core ML / Deep Learning ──
+paddlepaddle-gpu>=3.3
+paddleocr>=3.5
+
+# ── YOLO Detection ──
+ultralytics>=8.0,<8.3
+
+# ── LLM / Agent (VLM inference + Embedding) ──
+langchain-core>=0.3.0
+langchain-openai>=0.3.0
+langchain-community>=0.4.0
+langgraph>=0.3.0
+
+# ── Vector Store ──
+faiss-cpu>=1.7
+
+# ── Image Processing ──
+opencv-python>=4.8
+numpy>=1.24
+
+# ── HTTP / API ──
+httpx>=0.27
+
+# ── Config / Utilities ──
+pyyaml>=6.0
+rich>=13.0
+
+# ── Optional: GPU support ──
+# torch>=2.0,<2.5
+# torchvision>=0.15,<0.20
+
+# ── Optional: Dev / Testing ──
+# pytest>=8.0
+# pytest-asyncio>=0.23
