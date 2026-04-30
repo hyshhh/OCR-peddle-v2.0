@@ -183,13 +183,9 @@ class HullNumberLocator:
             logger.warning("弦号定位异常: %s", e)
             return []
 
-        finally:
-            # 清理临时文件
-            if tmp_file and os.path.exists(tmp_file):
-                try:
-                    os.unlink(tmp_file)
-                except OSError:
-                    pass
+        except Exception as e:
+            logger.warning("弦号定位异常: %s", e)
+            return []
 
     def cleanup(self) -> None:
         """释放模型资源。"""
