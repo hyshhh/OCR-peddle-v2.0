@@ -89,19 +89,9 @@ class HullNumberLocator:
         if crop is None or crop.size == 0:
             return []
 
-        # 保存 crop 到临时文件（PaddleOCR TextDetection 接受文件路径）
-        import tempfile
-        import os
-
-        tmp_file = None
         try:
-            fd, tmp_path = tempfile.mkstemp(suffix=".jpg")
-            os.close(fd)
-            cv2.imwrite(tmp_path, crop)
-            tmp_file = tmp_path
-
-            # 运行 PaddleOCR TextDetection
-            output = self._model.predict(tmp_path)
+            # 直接传 numpy 数组给 PaddleOCR，避免 JPEG 编解码损失
+            output = self._model.predict(crop)
 
             regions: list[TextRegion] = []
 
