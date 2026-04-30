@@ -102,6 +102,13 @@ class HullNumberLocator:
 
             # 运行 PaddleOCR TextDetection
             output = self._model.predict(tmp_path)
+            logger.info("PaddleOCR 原始输出: %s", output)
+            logger.info("PaddleOCR 输出类型: %s", type(output))
+            if output:
+                for i, res in enumerate(output):
+                    logger.info("  结果[%d] 类型=%s", i, type(res))
+                    if hasattr(res, '__dict__'):
+                        logger.info("  结果[%d] attrs=%s", i, list(res.__dict__.keys()))
 
             regions: list[TextRegion] = []
 
