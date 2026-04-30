@@ -101,6 +101,14 @@ class HullNumberLocator:
             tmp_file = tmp_path
 
             # 运行 PaddleOCR TextDetection
+            # 保存 crop 用于调试
+            import os as _os
+            debug_dir = _os.path.join(_os.getcwd(), 'debug_crops')
+            _os.makedirs(debug_dir, exist_ok=True)
+            debug_path = _os.path.join(debug_dir, f'crop_{_os.path.basename(tmp_path)}')
+            _os.system(f'cp {tmp_path} {debug_path}')
+            logger.info("Crop 保存到: %s (size=%s)", debug_path, crop.shape if hasattr(crop, 'shape') else 'unknown')
+
             output = self._model.predict(tmp_path)
             logger.info("PaddleOCR 原始输出: %s", output)
             logger.info("PaddleOCR 输出类型: %s", type(output))
