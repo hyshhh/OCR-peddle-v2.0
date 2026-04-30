@@ -195,8 +195,8 @@ class ShipDetector:
 
             # 对 crop 做尺寸归一化：小的放大、大的缩小，统一到 256~512px
 
-            target_min = 256
-            target_max = 512
+            target_min = 512
+            target_max = 1024
             max_dim = max(crop_w, crop_h)
             if max_dim < target_min:
                 scale = target_min / max_dim
