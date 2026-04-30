@@ -88,6 +88,8 @@ class ShipPipeline:
             tracker_type=pipe_cfg.get("tracker", "bytetrack"),
             tracker_params=pipe_cfg.get("tracker_params"),
             classes=pipe_cfg.get("detect_classes", [8]),  # COCO: 8=boat
+            crop_min_size=pipe_cfg.get("crop_min_size", 512),
+            crop_max_size=pipe_cfg.get("crop_max_size", 1024),
         )
 
         self._tracker = TrackManager(
