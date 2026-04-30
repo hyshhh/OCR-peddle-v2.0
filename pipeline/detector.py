@@ -77,6 +77,8 @@ class ShipDetector:
         tracker_type: str = "bytetrack",
         tracker_params: dict[str, Any] | None = None,
         classes: list[int] | None = None,
+        crop_min_size: int = 512,
+        crop_max_size: int = 1024,
     ):
         """
         Args:
@@ -87,12 +89,16 @@ class ShipDetector:
             tracker_params: 追踪器参数字典。None 使用 ultralytics 内置默认值。
             classes: 只检测指定类别 ID 列表。None 表示检测所有类别。
                      COCO 中船的类别 ID 是 8。
+            crop_min_size: crop 最小尺寸（低于此值放大）。
+            crop_max_size: crop 最大尺寸（高于此值缩小）。
         """
         from ultralytics import YOLO
 
         self._conf_threshold = conf_threshold
         self._classes = classes
         self._device = device
+        self._crop_min_size = crop_min_size
+        self._crop_max_size = crop_max_size
 
         # 生成 tracker YAML
         self._tracker_yaml = _build_tracker_yaml(tracker_type, tracker_params)
@@ -195,8 +201,8 @@ class ShipDetector:
 
             # 对 crop 做尺寸归一化：小的放大、大的缩小，统一到 256~512px
 
-            target_min = 512
-            target_max = 1024
+            target_min = self._crop_min_size
+            target_max = self._crop_max_size
             max_dim = max(crop_w, crop_h)
             if max_dim < target_min:
                 scale = target_min / max_dim
