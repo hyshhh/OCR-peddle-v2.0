@@ -235,7 +235,7 @@ class ShipPipeline:
                 with self._latency.measure("locator"):
                     offset_x, offset_y = det.crop_offset
                     regions = self._locator.locate(
-                        det.crop,
+                        det.crop_raw if det.crop_raw is not None else det.crop,
                         offset_x=offset_x,
                         offset_y=offset_y,
                     )

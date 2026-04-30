@@ -26,7 +26,8 @@ class Detection:
     track_id: int
     bbox: tuple[int, int, int, int]  # (x1, y1, x2, y2)
     confidence: float
-    crop: np.ndarray | None = None   # 裁剪的图像区域
+    crop: np.ndarray | None = None   # resize 后的 crop（给 VLM 用）
+    crop_raw: np.ndarray | None = None  # 原始未 resize 的 crop（给 PaddleOCR 用）
     crop_offset: tuple[int, int] = (0, 0)  # crop 在原始帧中的偏移 (offset_x, offset_y)
     hull_number_boxes: list[tuple[int, int, int, int]] | None = None  # 弦号定位框（帧坐标）
 
@@ -199,7 +200,11 @@ class ShipDetector:
                 logger.debug("跳过过小 crop: %dx%d (track=%d)", crop_w, crop_h, track_id)
                 continue
 
+            # 保留原始 crop 给 PaddleOCR（不压缩、不 resize）
+            crop_raw = crop
+
             # 对 crop 做尺寸归一化：小的放大、大的缩小，统一到 256~512px
+            # resize 后的 crop 仅给 VLM 用
 
             target_min = self._crop_min_size
             target_max = self._crop_max_size
@@ -218,6 +223,7 @@ class ShipDetector:
                 bbox=(x1, y1, x2, y2),
                 confidence=conf,
                 crop=crop,
+                crop_raw=crop_raw,
                 crop_offset=(cx1, cy1),
             ))
 

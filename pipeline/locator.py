@@ -77,7 +77,7 @@ class HullNumberLocator:
         在 crop 图像中定位文字区域。
 
         Args:
-            crop: YOLO 裁剪的船只图像 (BGR)。
+            crop: YOLO 裁剪的原始船只图像 (BGR)，未经 resize。
             offset_x: crop 在原始帧中的左上角 x 偏移量。
             offset_y: crop 在原始帧中的左上角 y 偏移量。
 
