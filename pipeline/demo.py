@@ -208,6 +208,35 @@ class DemoRenderer:
     @staticmethod
     def _get_display_text(track_info: Any) -> str:
         """获取显示文本。"""
+        if not getattr(track_info, "recognized", False):
+            return "(识别中...)" if getattr(track_info, "pending", False) else ""
+
+        # 绿色：精确匹配库内
+        if getattr(track_info, "db_matched", False):
+            return f"(库内确定id：{getattr(track_info, 'db_match_id', '')})"
+
+        hull_number = getattr(track_info, "hull_number", "") or ""
+        semantic_ids = getattr(track_info, "semantic_match_ids", []) or []
+        desc = getattr(track_info, "description", "")[:15]
+
+        # 黄色：识别到弦号 + 有语义匹配候选
+        if hull_number and semantic_ids:
+            candidates = "/".join(semantic_ids[:3])
+            return f"(未知id：{hull_number} 可能：{candidates})"
+
+        # 红色：识别到弦号但无匹配
+        if hull_number:
+            if desc:
+                return f"(未知id：{hull_number} - {desc})"
+            return f"(未知id：{hull_number})"
+
+        # 红色：未识别到弦号，通过描述语义匹配
+        if semantic_ids:
+            candidates = "/".join(semantic_ids[:3])
+            return f"(未知id：无 可能：{candidates})"
+
+        # 红色：完全未识别
+        return "(未知id：无)"
 
     def _render_hull_number_boxes(
         self,
@@ -256,35 +285,6 @@ class DemoRenderer:
             end_y = int(y1 + uy * end_dist)
             cv2.line(img, (start_x, start_y), (end_x, end_y), color, thickness)
             dist = end_dist + gap_len
-        if not getattr(track_info, "recognized", False):
-            return "(识别中...)" if getattr(track_info, "pending", False) else ""
-
-        # 绿色：精确匹配库内
-        if getattr(track_info, "db_matched", False):
-            return f"(库内确定id：{getattr(track_info, 'db_match_id', '')})"
-
-        hull_number = getattr(track_info, "hull_number", "") or ""
-        semantic_ids = getattr(track_info, "semantic_match_ids", []) or []
-        desc = getattr(track_info, "description", "")[:15]
-
-        # 黄色：识别到弦号 + 有语义匹配候选
-        if hull_number and semantic_ids:
-            candidates = "/".join(semantic_ids[:3])
-            return f"(未知id：{hull_number} 可能：{candidates})"
-
-        # 红色：识别到弦号但无匹配
-        if hull_number:
-            if desc:
-                return f"(未知id：{hull_number} - {desc})"
-            return f"(未知id：{hull_number})"
-
-        # 红色：未识别到弦号，通过描述语义匹配
-        if semantic_ids:
-            candidates = "/".join(semantic_ids[:3])
-            return f"(未知id：无 可能：{candidates})"
-
-        # 红色：完全未识别
-        return "(未知id：无)"
 
     def _render_label(
         self,
