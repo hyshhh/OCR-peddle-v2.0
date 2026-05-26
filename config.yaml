@@ -36,10 +36,10 @@ pipeline:
   # 级联/并发双模式
   # false = 级联模式：同步等待 Agent 返回结果（简单但阻塞，FPS 低）
   # true  = 并发模式：YOLO 不等待，Agent 异步推理（推荐，FPS 高）
-  concurrent_mode: true
+  concurrent_mode: false
 
   # 最大并发 Agent 推理数
-  max_concurrent: 4
+  max_concurrent: 1
 
   # 最大队列深度（并发模式下防止 OOM）
   max_queued_frames: 30
@@ -81,7 +81,7 @@ pipeline:
   crop_max_size: 1024
 
   # 每 N 帧检测一次 YOLO（1 = 每帧检测，2 = 隔帧检测可翻倍 FPS）
-  detect_every_n_frames: 2
+  detect_every_n_frames: 5
 
   # 追踪算法："bytetrack" 或 "botsort"
   tracker: "bytetrack"
@@ -104,13 +104,12 @@ pipeline:
     - 8
 
   # 超过此帧数未出现的 track 被清理
-  max_stale_frames: 300
-
+  max_stale_frames: 30
 # 弦号定位配置（PaddleOCR TextDetection）
 hull_locator:
   # 弦号定位开关：true 启用 PaddleOCR 文字检测定位
-  enabled: false
+  enabled: true
   # 文字检测置信度阈值
-  score_threshold: 0.5
+  score_threshold: 0.0
   # 最小文字区域面积（像素²），过滤噪声
-  min_area: 100
+  min_area: 0
