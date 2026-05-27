@@ -135,9 +135,6 @@ hull_locator:
   box_thresh: 0.6               # 框阈值：框内平均得分 > 此值才保留
   unclip_ratio: 1.5             # 膨胀系数：Vatti clipping 扩张系数
 
-  # ── 推理参数 ──
-  batch_size: 1                 # 批次大小（正整数）
-
   # ── 推理引擎参数 ──
   device: null                  # 推理设备：null 自动 / "cpu" / "gpu" / "gpu:0"
   engine: null                  # 推理引擎：null / paddle_static / paddle_dynamic / transformers
