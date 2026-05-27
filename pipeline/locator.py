@@ -70,7 +70,8 @@ class HullNumberLocator:
             logger.info("TextDetection 参数: %s", self._paddle_kwargs)
             self._model = TextDetection(**self._paddle_kwargs)
             self._initialized = True
-            logger.info("PaddleOCR TextDetection 加载成功")
+            logger.info("后处理: score_threshold=%.3f, min_area=%d",
+                        self._score_threshold, self._min_area)
         except ImportError:
             logger.error(
                 "PaddleOCR 未安装。请安装: pip install paddleocr>=3.5 paddlepaddle-gpu>=3.3"
