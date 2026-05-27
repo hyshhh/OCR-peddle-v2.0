@@ -75,6 +75,7 @@ _DEFAULTS: dict[str, Any] = {
         "thresh": 0.3,
         "box_thresh": 0.6,
         "unclip_ratio": 1.5,
+        "batch_size": 1,
         "device": None,
         "engine": None,
         "engine_config": None,

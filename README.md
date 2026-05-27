@@ -365,6 +365,9 @@ hull_locator:
   box_thresh: 0.6                # 框阈值
   unclip_ratio: 1.5              # 膨胀系数
 
+  # 推理参数
+  batch_size: 1                  # 批次大小
+
   # 推理引擎
   device: null                   # null 自动 / "cpu" / "gpu"
   engine: null                   # paddle_static / paddle_dynamic / transformers
