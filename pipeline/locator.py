@@ -104,16 +104,10 @@ class HullNumberLocator:
 
         try:
             output = self._model.predict(crop)
-            logger.debug("predict 返回 %d 条结果, 类型: %s", len(output), type(output[0]) if output else "空")
 
             regions: list[TextRegion] = []
 
             for res in output:
-                logger.debug("result 类型: %s, 键: %s", type(res).__name__, list(res.keys()) if hasattr(res, 'keys') else "无")
-                boxes = None
-                scores = None
-
-                # TextDetResult 继承自 dict，用字典式访问
                 if isinstance(res, dict):
                     boxes = res.get('dt_polys', None)
                     scores = res.get('dt_scores', None)
@@ -122,10 +116,6 @@ class HullNumberLocator:
                     scores = getattr(res, 'dt_scores', None)
                 else:
                     continue
-
-                logger.debug("dt_polys 数量: %s, dt_scores: %s",
-                             len(boxes) if boxes is not None else 0,
-                             scores[:3] if scores else None)
 
                 if boxes is None:
                     continue

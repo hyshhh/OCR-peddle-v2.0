@@ -237,7 +237,11 @@ class ShipPipeline:
                         offset_y=offset_y,
                     )
                     det.hull_number_boxes = [r.bbox_frame for r in regions]
-                logger.info("Track %d: 弦号定位到 %d 个区域", det.track_id, len(regions))
+                if regions:
+                    scores_str = ", ".join(f"{r.confidence:.3f}" for r in regions)
+                    logger.info("Track %d: 弦号定位到 %d 个区域 (精度: %s)", det.track_id, len(regions), scores_str)
+                else:
+                    logger.info("Track %d: 弦号定位到 0 个区域", det.track_id)
             except Exception as e:
                 logger.warning("弦号定位异常 (track=%d): %s", det.track_id, e)
                 det.hull_number_boxes = []
