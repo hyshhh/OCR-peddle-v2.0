@@ -235,6 +235,7 @@ class ShipPipeline:
                         det.crop_raw if det.crop_raw is not None else det.crop,
                         offset_x=offset_x,
                         offset_y=offset_y,
+                        track_id=det.track_id,
                     )
                     det.hull_number_boxes = [r.bbox_frame for r in regions]
                 if regions:

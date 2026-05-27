@@ -4,11 +4,14 @@ HullNumberLocator — 基于 PaddleOCR TextDetection 的弦号定位
 在 YOLO crop 上运行文字检测，返回检测到的文字区域框（已转换为原始帧坐标）。
 
 可选 UVDoc 文字矫正预处理：crop → UVDoc 矫正 → TextDetection 检测。
+支持保存矫正前后的 crop 图像用于调试。
 """
 
 from __future__ import annotations
 
 import logging
+import time
+from pathlib import Path
 from dataclasses import dataclass
 
 import cv2
@@ -20,6 +23,7 @@ logger = logging.getLogger(__name__)
 _OWN_KEYS = frozenset({
     "enabled", "score_threshold", "min_area",
     "unwarp_enabled", "unwarp_model_name", "unwarp_model_dir", "unwarp_device",
+    "save_crops", "crop_save_dir", "crop_save_interval",
 })
 
 
@@ -50,6 +54,12 @@ class HullNumberLocator:
         self._unwarp_model_name: str | None = locator_cfg.get("unwarp_model_name")
         self._unwarp_model_dir: str | None = locator_cfg.get("unwarp_model_dir")
         self._unwarp_device: str | None = locator_cfg.get("unwarp_device")
+
+        # Crop 保存配置
+        self._save_crops: bool = bool(locator_cfg.get("save_crops", False))
+        self._crop_save_dir: str = locator_cfg.get("crop_save_dir", "./crops")
+        self._crop_save_interval: float = locator_cfg.get("crop_save_interval", 10)
+        self._last_crop_save: float = 0.0
 
         # TextDetection 参数（去掉所有我们自己的 key）
         self._paddle_kwargs: dict = {
@@ -84,8 +94,9 @@ class HullNumberLocator:
                 logger.info("UVDoc 矫正模型加载成功")
 
             self._initialized = True
-            logger.info("后处理: score_threshold=%.3f, min_area=%d, unwarp=%s",
-                        self._score_threshold, self._min_area, self._unwarp_enabled)
+            logger.info("后处理: score_threshold=%.3f, min_area=%d, unwarp=%s, save_crops=%s",
+                        self._score_threshold, self._min_area,
+                        self._unwarp_enabled, self._save_crops)
         except ImportError:
             logger.error(
                 "PaddleOCR 未安装。请安装: pip install paddleocr>=3.5 paddlepaddle-gpu>=3.3"
@@ -116,11 +127,34 @@ class HullNumberLocator:
             logger.warning("UVDoc 矫正异常，使用原图: %s", e)
             return crop
 
+    def _maybe_save_crops(self, crop_raw: np.ndarray, crop_unwarped: np.ndarray, track_id: int) -> None:
+        """每隔 crop_save_interval 秒保存矫正前后的 crop。"""
+        if not self._save_crops:
+            return
+
+        now = time.monotonic()
+        if now - self._last_crop_save < self._crop_save_interval:
+            return
+        self._last_crop_save = now
+
+        try:
+            save_dir = Path(self._crop_save_dir)
+            save_dir.mkdir(parents=True, exist_ok=True)
+
+            ts = int(time.time())
+            prefix = save_dir / f"track{track_id}_{ts}"
+            cv2.imwrite(str(prefix) + "_before.jpg", crop_raw)
+            cv2.imwrite(str(prefix) + "_after.jpg", crop_unwarped)
+            logger.info("Crop 已保存: %s_before.jpg / %s_after.jpg", prefix, prefix)
+        except Exception as e:
+            logger.warning("保存 crop 失败: %s", e)
+
     def locate(
         self,
         crop: np.ndarray,
         offset_x: int = 0,
         offset_y: int = 0,
+        track_id: int = 0,
     ) -> list[TextRegion]:
         self._ensure_initialized()
 
@@ -129,7 +163,11 @@ class HullNumberLocator:
 
         try:
             # UVDoc 矫正（可选）
-            det_input = self._unwarp_crop(crop) if self._unwarp_enabled else crop
+            if self._unwarp_enabled:
+                det_input = self._unwarp_crop(crop)
+                self._maybe_save_crops(crop, det_input, track_id)
+            else:
+                det_input = crop
 
             output = self._det_model.predict(det_input)
 
