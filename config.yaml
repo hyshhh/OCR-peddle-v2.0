@@ -123,12 +123,6 @@ hull_locator:
   score_threshold: 0.0          # 检测置信度阈值（模型返回后过滤）
   min_area: 0                   # 最小检测区域面积（像素²），过滤噪声
 
-  # ── UVDoc 文字矫正（仅 paddle 检测器生效） ──
-  unwarp_enabled: true          # 是否启用 UVDoc 矫正（开启会增加推理耗时）
-  unwarp_model_name: null       # 模型名（null = 默认 UVDoc）
-  unwarp_model_dir: null        # 本地模型目录
-  unwarp_device: null           # 推理设备
-
   # ── Crop 保存（调试用） ──
   save_crops: true              # 是否保存矫正前后的 crop
   crop_save_dir: "./crops"      # crop 保存目录
@@ -191,5 +185,5 @@ hull_locator:
   yolo_conf: 0.25               # 检测置信度阈值
   yolo_iou: 0.45                # NMS IoU 阈值
   yolo_imgsz: 640               # 输入图像尺寸
-  yolo_device: ""               # 推理设备："" 自动 / "cpu" / "0" GPU
+  yolo_device: "0"               # 推理设备："" 自动 / "cpu" / "0" GPU
   yolo_classes: null            # 检测类别（null = 所有类别）

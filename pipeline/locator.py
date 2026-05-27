@@ -5,7 +5,7 @@ HullNumberLocator — 弦号定位器
   - PaddleOCR TextDetection：文字检测，适合通用 OCR 场景
   - YOLO：目标检测，适合训练好的弦号检测模型
 
-可选 UVDoc 文字矫正预处理和图像预处理流水线。
+可选图像预处理流水线。
 """
 
 from __future__ import annotations
@@ -24,7 +24,6 @@ logger = logging.getLogger(__name__)
 _OWN_KEYS = frozenset({
     "enabled", "detector_type",
     "score_threshold", "min_area",
-    "unwarp_enabled", "unwarp_model_name", "unwarp_model_dir", "unwarp_device",
     "save_crops", "crop_save_dir", "crop_save_interval",
     "preprocess_steps",
     "yolo_model", "yolo_model_name", "yolo_conf", "yolo_iou", "yolo_imgsz", "yolo_device", "yolo_classes",
@@ -45,23 +44,16 @@ class HullNumberLocator:
     弦号定位器 — 支持 PaddleOCR 和 YOLO 两种检测器。
 
     流程：
-    1. crop → UVDoc 矫正（可选，仅 paddle）
-    2. crop → 图像预处理（可选）
-    3. 检测器推理
-    4. 后处理过滤（score_threshold / min_area）
-    5. 坐标转换：crop 坐标 → 原始帧坐标
+    1. crop → 图像预处理（可选）
+    2. 检测器推理
+    3. 后处理过滤（score_threshold / min_area）
+    4. 坐标转换：crop 坐标 → 原始帧坐标
     """
 
     def __init__(self, locator_cfg: dict):
         self._detector_type: str = locator_cfg.get("detector_type", "paddle")
         self._score_threshold: float = locator_cfg.get("score_threshold", 0.5)
         self._min_area: int = locator_cfg.get("min_area", 100)
-
-        # UVDoc 矫正配置（仅 paddle 检测器）
-        self._unwarp_enabled: bool = bool(locator_cfg.get("unwarp_enabled", False))
-        self._unwarp_model_name: str | None = locator_cfg.get("unwarp_model_name")
-        self._unwarp_model_dir: str | None = locator_cfg.get("unwarp_model_dir")
-        self._unwarp_device: str | None = locator_cfg.get("unwarp_device")
 
         # Crop 保存配置
         self._save_crops: bool = bool(locator_cfg.get("save_crops", False))
@@ -75,7 +67,6 @@ class HullNumberLocator:
 
         # 检测器参数
         self._det_model = None
-        self._unwarp_model = None
         self._initialized = False
 
         if self._detector_type == "yolo":
@@ -118,18 +109,6 @@ class HullNumberLocator:
         logger.info("TextDetection 参数: %s", self._paddle_kwargs)
         self._det_model = TextDetection(**self._paddle_kwargs)
 
-        if self._unwarp_enabled:
-            from paddleocr import TextImageUnwarping
-            unwarp_kwargs = {}
-            if self._unwarp_model_name:
-                unwarp_kwargs["model_name"] = self._unwarp_model_name
-            if self._unwarp_model_dir:
-                unwarp_kwargs["model_dir"] = self._unwarp_model_dir
-            if self._unwarp_device:
-                unwarp_kwargs["device"] = self._unwarp_device
-            self._unwarp_model = TextImageUnwarping(**unwarp_kwargs)
-            logger.info("UVDoc 矫正模型加载成功")
-
     def _init_yolo(self) -> None:
         """初始化 YOLO 检测器。"""
         from ultralytics import YOLO
@@ -141,29 +120,8 @@ class HullNumberLocator:
         if hasattr(self._det_model, "names"):
             logger.info("YOLO 模型类别: %s", self._det_model.names)
 
-    def _unwarp_crop(self, crop: np.ndarray) -> np.ndarray:
-        """UVDoc 矫正：BGR → RGB → 矫正 → BGR。"""
-        try:
-            rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
-            output = self._unwarp_model.predict(rgb)
-            result = output[0]
-            if isinstance(result, dict):
-                corrected = result.get("doctr_img", result.get("res", None))
-            else:
-                corrected = getattr(result, "doctr_img", None)
-            if corrected is not None:
-                if isinstance(corrected, np.ndarray):
-                    if corrected.ndim == 3 and corrected.shape[2] == 3:
-                        return cv2.cvtColor(corrected, cv2.COLOR_RGB2BGR)
-                    return corrected
-            logger.debug("UVDoc 返回空结果，使用原图")
-            return crop
-        except Exception as e:
-            logger.warning("UVDoc 矫正异常，使用原图: %s", e)
-            return crop
-
-    def _maybe_save_crops(self, crop_raw: np.ndarray, crop_processed: np.ndarray, track_id: int) -> None:
-        """每隔 crop_save_interval 秒保存矫正前后的 crop。"""
+    def _maybe_save_crops(self, crop: np.ndarray, track_id: int) -> None:
+        """每隔 crop_save_interval 秒保存 crop。"""
         if not self._save_crops:
             return
 
@@ -178,9 +136,8 @@ class HullNumberLocator:
 
             ts = int(time.time())
             prefix = save_dir / f"track{track_id}_{ts}"
-            cv2.imwrite(str(prefix) + "_before.jpg", crop_raw)
-            cv2.imwrite(str(prefix) + "_after.jpg", crop_processed)
-            logger.info("Crop 已保存: %s_before.jpg / %s_after.jpg", prefix, prefix)
+            cv2.imwrite(str(prefix) + "_crop.jpg", crop)
+            logger.info("Crop 已保存: %s_crop.jpg", prefix)
         except Exception as e:
             logger.warning("保存 crop 失败: %s", e)
 
@@ -197,14 +154,11 @@ class HullNumberLocator:
             return []
 
         try:
-            # UVDoc 矫正（仅 paddle 检测器）
-            if self._detector_type == "paddle" and self._unwarp_enabled:
-                det_input = self._unwarp_crop(crop)
-                self._maybe_save_crops(crop, det_input, track_id)
-            else:
-                det_input = crop
+            # 保存 crop（调试用）
+            self._maybe_save_crops(crop, track_id)
 
             # 图像预处理（小波去噪、卷积锐化等）
+            det_input = crop
             if self._preprocess_pipeline:
                 from pipeline.image_processing import apply_pipeline
                 det_input = apply_pipeline(det_input, self._preprocess_pipeline)
@@ -213,7 +167,7 @@ class HullNumberLocator:
             if self._detector_type == "yolo":
                 regions = self._detect_yolo(det_input, offset_x, offset_y)
             else:
-                regions = self._detect_paddle(det_input, crop, offset_x, offset_y)
+                regions = self._detect_paddle(det_input, offset_x, offset_y)
 
             return regions
 
@@ -224,7 +178,6 @@ class HullNumberLocator:
     def _detect_paddle(
         self,
         det_input: np.ndarray,
-        crop_original: np.ndarray,
         offset_x: int,
         offset_y: int,
     ) -> list[TextRegion]:
@@ -258,13 +211,6 @@ class HullNumberLocator:
                 area = cv2.contourArea(box_array)
                 if area < self._min_area:
                     continue
-
-                # UVDoc 矫正后图像尺寸可能变化，需要缩放坐标回原始 crop
-                if self._unwarp_enabled and det_input.shape[:2] != crop_original.shape[:2]:
-                    h_scale = crop_original.shape[1] / det_input.shape[1]
-                    v_scale = crop_original.shape[0] / det_input.shape[0]
-                    box_array[:, 0] = (box_array[:, 0] * h_scale).astype(np.int32)
-                    box_array[:, 1] = (box_array[:, 1] * v_scale).astype(np.int32)
 
                 # 坐标转换：crop 坐标 → 帧坐标
                 box_frame = box_array.copy()
@@ -343,5 +289,4 @@ class HullNumberLocator:
 
     def cleanup(self) -> None:
         self._det_model = None
-        self._unwarp_model = None
         self._initialized = False
