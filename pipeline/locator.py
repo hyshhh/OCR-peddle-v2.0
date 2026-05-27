@@ -24,6 +24,7 @@ _OWN_KEYS = frozenset({
     "enabled", "score_threshold", "min_area",
     "unwarp_enabled", "unwarp_model_name", "unwarp_model_dir", "unwarp_device",
     "save_crops", "crop_save_dir", "crop_save_interval",
+    "preprocess_steps",
 })
 
 
@@ -60,6 +61,10 @@ class HullNumberLocator:
         self._crop_save_dir: str = locator_cfg.get("crop_save_dir", "./crops")
         self._crop_save_interval: float = locator_cfg.get("crop_save_interval", 10)
         self._last_crop_save: float = 0.0
+
+        # 图像预处理流水线
+        from pipeline.image_processing import build_pipeline
+        self._preprocess_pipeline = build_pipeline(locator_cfg.get("preprocess_steps", []))
 
         # TextDetection 参数（去掉所有我们自己的 key）
         self._paddle_kwargs: dict = {
@@ -168,6 +173,11 @@ class HullNumberLocator:
                 self._maybe_save_crops(crop, det_input, track_id)
             else:
                 det_input = crop
+
+            # 图像预处理（小波去噪、卷积锐化等）
+            if self._preprocess_pipeline:
+                from pipeline.image_processing import apply_pipeline
+                det_input = apply_pipeline(det_input, self._preprocess_pipeline)
 
             output = self._det_model.predict(det_input)
 

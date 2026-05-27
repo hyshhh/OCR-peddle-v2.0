@@ -131,6 +131,21 @@ hull_locator:
   crop_save_dir: "./crops"      # crop 保存目录
   crop_save_interval: 10        # 保存间隔（秒）
 
+  # ── 图像预处理（OCR 前对 crop 做处理） ──
+  # 按顺序执行，留空则不做预处理
+  # 可选算法：wavelet_denoise, convolution_sharpen, clahe_enhance,
+  #           gaussian_blur, median_blur, bilateral_denoise,
+  #           unsharp_mask, grayscale, adaptive_threshold
+  preprocess_steps: []
+  # 预处理示例：
+  # preprocess_steps:
+  #   - name: "wavelet_denoise"
+  #     params: { level: 1, threshold: 10.0 }
+  #   - name: "convolution_sharpen"
+  #     params: { strength: 1.5 }
+  #   - name: "clahe_enhance"
+  #     params: { clip_limit: 2.0, grid_size: 8 }
+
   # ── 模型选择 ──
   model_name: null              # 模型名（null = 默认 PP-OCRv5_server_det）
   model_dir: null               # 本地模型目录（null = 自动下载）

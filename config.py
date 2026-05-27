@@ -73,6 +73,7 @@ _DEFAULTS: dict[str, Any] = {
         "save_crops": True,
         "crop_save_dir": "./crops",
         "crop_save_interval": 10,
+        "preprocess_steps": [],
         "model_name": None,
         "model_dir": None,
         "limit_side_len": 960,
