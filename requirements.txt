@@ -6,7 +6,7 @@ paddlepaddle-gpu>=3.3
 paddleocr>=3.5
 
 # ── YOLO Detection ──
-ultralytics>=8.0,<8.3
+ultralytics>=8.0,<9.0
 
 # ── LLM / Agent (VLM inference + Embedding) ──
 langchain-core>=0.3.0
