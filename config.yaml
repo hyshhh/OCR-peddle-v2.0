@@ -120,6 +120,12 @@ hull_locator:
   score_threshold: 0.0          # 文字检测置信度阈值（模型返回后过滤）
   min_area: 0                   # 最小文字区域面积（像素²），过滤噪声
 
+  # ── UVDoc 文字矫正（可选预处理） ──
+  unwarp_enabled: false         # 是否启用 UVDoc 矫正（开启会增加推理耗时）
+  unwarp_model_name: null       # 模型名（null = 默认 UVDoc）
+  unwarp_model_dir: null        # 本地模型目录
+  unwarp_device: null           # 推理设备
+
   # ── 模型选择 ──
   model_name: null              # 模型名（null = 默认 PP-OCRv5_server_det）
   model_dir: null               # 本地模型目录（null = 自动下载）

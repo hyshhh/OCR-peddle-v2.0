@@ -350,6 +350,12 @@ hull_locator:
   score_threshold: 0.0
   min_area: 0
 
+  # UVDoc 文字矫正（可选预处理）
+  unwarp_enabled: false
+  unwarp_model_name: null         # 默认 UVDoc
+  unwarp_model_dir: null
+  unwarp_device: null
+
   # 模型
   model_name: null               # 默认 PP-OCRv5_server_det
   model_dir: null                # 本地模型目录

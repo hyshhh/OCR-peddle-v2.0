@@ -3,8 +3,7 @@ HullNumberLocator — 基于 PaddleOCR TextDetection 的弦号定位
 
 在 YOLO crop 上运行文字检测，返回检测到的文字区域框（已转换为原始帧坐标）。
 
-支持 PaddleOCR 3.5 TextDetection 参数（无前缀版本），
-可通过 config.yaml 灵活调整检测参数。
+可选 UVDoc 文字矫正预处理：crop → UVDoc 矫正 → TextDetection 检测。
 """
 
 from __future__ import annotations
@@ -17,8 +16,11 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# 我们自己的参数（从 config 中提取后不传给 TextDetection）
-_OWN_KEYS = frozenset({"enabled", "score_threshold", "min_area"})
+# 我们自己的参数（从 config 中提取后不传给 PaddleOCR）
+_OWN_KEYS = frozenset({
+    "enabled", "score_threshold", "min_area",
+    "unwarp_enabled", "unwarp_model_name", "unwarp_model_dir", "unwarp_device",
+})
 
 
 @dataclass
@@ -31,47 +33,59 @@ class TextRegion:
 
 class HullNumberLocator:
     """
-    弦号定位器 — 使用 PaddleOCR TextDetection 在 crop 中检测文字区域。
+    弦号定位器 — PaddleOCR TextDetection 检测文字区域。
 
-    接受完整的 locator_cfg 字典，提取自己的参数（score_threshold / min_area），
-    其余所有 det_* 参数直接透传给 PaddleOCR TextDetection。
-
-    坐标转换流程：
-    1. PaddleOCR 返回 crop 内的多边形坐标
-    2. 加上 crop 在原始帧中的偏移量 (offset_x, offset_y)
-    3. 得到原始帧中的绝对坐标
+    流程（可选 UVDoc 矫正）：
+    1. crop → UVDoc 矫正（若启用）→ TextDetection 检测
+    2. 后处理过滤（score_threshold / min_area）
+    3. 坐标转换：crop 坐标 → 原始帧坐标
     """
 
     def __init__(self, locator_cfg: dict):
-        """
-        Args:
-            locator_cfg: hull_locator 配置字典。包含 enabled / score_threshold /
-                min_area 以及所有 PaddleOCR TextDetection 参数。
-        """
         self._score_threshold: float = locator_cfg.get("score_threshold", 0.5)
         self._min_area: int = locator_cfg.get("min_area", 100)
 
-        # 提取透传给 TextDetection 的参数（去掉我们自己的 key）
+        # UVDoc 矫正配置
+        self._unwarp_enabled: bool = bool(locator_cfg.get("unwarp_enabled", False))
+        self._unwarp_model_name: str | None = locator_cfg.get("unwarp_model_name")
+        self._unwarp_model_dir: str | None = locator_cfg.get("unwarp_model_dir")
+        self._unwarp_device: str | None = locator_cfg.get("unwarp_device")
+
+        # TextDetection 参数（去掉所有我们自己的 key）
         self._paddle_kwargs: dict = {
             k: v for k, v in locator_cfg.items()
             if k not in _OWN_KEYS and v is not None
         }
 
-        self._model = None
+        self._det_model = None
+        self._unwarp_model = None
         self._initialized = False
 
     def _ensure_initialized(self) -> None:
-        """延迟初始化 PaddleOCR 模型（首次调用时加载）。"""
         if self._initialized:
             return
 
         try:
             from paddleocr import TextDetection
+
             logger.info("TextDetection 参数: %s", self._paddle_kwargs)
-            self._model = TextDetection(**self._paddle_kwargs)
+            self._det_model = TextDetection(**self._paddle_kwargs)
+
+            if self._unwarp_enabled:
+                from paddleocr import TextImageUnwarping
+                unwarp_kwargs = {}
+                if self._unwarp_model_name:
+                    unwarp_kwargs["model_name"] = self._unwarp_model_name
+                if self._unwarp_model_dir:
+                    unwarp_kwargs["model_dir"] = self._unwarp_model_dir
+                if self._unwarp_device:
+                    unwarp_kwargs["device"] = self._unwarp_device
+                self._unwarp_model = TextImageUnwarping(**unwarp_kwargs)
+                logger.info("UVDoc 矫正模型加载成功")
+
             self._initialized = True
-            logger.info("后处理: score_threshold=%.3f, min_area=%d",
-                        self._score_threshold, self._min_area)
+            logger.info("后处理: score_threshold=%.3f, min_area=%d, unwarp=%s",
+                        self._score_threshold, self._min_area, self._unwarp_enabled)
         except ImportError:
             logger.error(
                 "PaddleOCR 未安装。请安装: pip install paddleocr>=3.5 paddlepaddle-gpu>=3.3"
@@ -81,30 +95,43 @@ class HullNumberLocator:
             logger.error("PaddleOCR 模型加载失败: %s", e)
             raise
 
+    def _unwarp_crop(self, crop: np.ndarray) -> np.ndarray:
+        """UVDoc 矫正：BGR → RGB → 矫正 → BGR。"""
+        try:
+            rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+            output = self._unwarp_model.predict(rgb)
+            result = output[0]
+            if isinstance(result, dict):
+                corrected = result.get("doctr_img", result.get("res", None))
+            else:
+                corrected = getattr(result, "doctr_img", None)
+            if corrected is not None:
+                if isinstance(corrected, np.ndarray):
+                    if corrected.ndim == 3 and corrected.shape[2] == 3:
+                        return cv2.cvtColor(corrected, cv2.COLOR_RGB2BGR)
+                    return corrected
+            logger.debug("UVDoc 返回空结果，使用原图")
+            return crop
+        except Exception as e:
+            logger.warning("UVDoc 矫正异常，使用原图: %s", e)
+            return crop
+
     def locate(
         self,
         crop: np.ndarray,
         offset_x: int = 0,
         offset_y: int = 0,
     ) -> list[TextRegion]:
-        """
-        在 crop 图像中定位文字区域。
-
-        Args:
-            crop: YOLO 裁剪的原始船只图像 (BGR)，未经 resize。
-            offset_x: crop 在原始帧中的左上角 x 偏移量。
-            offset_y: crop 在原始帧中的左上角 y 偏移量。
-
-        Returns:
-            检测到的文字区域列表，坐标已转换为原始帧坐标系。
-        """
         self._ensure_initialized()
 
         if crop is None or crop.size == 0:
             return []
 
         try:
-            output = self._model.predict(crop)
+            # UVDoc 矫正（可选）
+            det_input = self._unwarp_crop(crop) if self._unwarp_enabled else crop
+
+            output = self._det_model.predict(det_input)
 
             regions: list[TextRegion] = []
 
@@ -135,6 +162,13 @@ class HullNumberLocator:
                     if area < self._min_area:
                         continue
 
+                    # UVDoc 矫正后图像尺寸可能变化，需要缩放坐标回原始 crop
+                    if self._unwarp_enabled and det_input.shape[:2] != crop.shape[:2]:
+                        h_scale = crop.shape[1] / det_input.shape[1]
+                        v_scale = crop.shape[0] / det_input.shape[0]
+                        box_array[:, 0] = (box_array[:, 0] * h_scale).astype(np.int32)
+                        box_array[:, 1] = (box_array[:, 1] * v_scale).astype(np.int32)
+
                     # 坐标转换：crop 坐标 → 帧坐标
                     box_frame = box_array.copy()
                     box_frame[:, 0] += offset_x
@@ -160,6 +194,6 @@ class HullNumberLocator:
             return []
 
     def cleanup(self) -> None:
-        """释放模型资源。"""
-        self._model = None
+        self._det_model = None
+        self._unwarp_model = None
         self._initialized = False
