@@ -77,8 +77,8 @@ pipeline:
   conf_threshold: 0.25
 
   # Crop 尺寸归一化：小的放大、大的缩小，统一到此范围
-  crop_min_size: 512
-  crop_max_size: 1024
+  crop_min_size: 224
+  crop_max_size: 448
 
   # 每 N 帧检测一次 YOLO（1 = 每帧检测，2 = 隔帧检测可翻倍 FPS）
   detect_every_n_frames: 5
