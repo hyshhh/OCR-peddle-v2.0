@@ -67,6 +67,7 @@ class HullNumberLocator:
 
         try:
             from paddleocr import TextDetection
+            logger.info("TextDetection 参数: %s", self._paddle_kwargs)
             self._model = TextDetection(**self._paddle_kwargs)
             self._initialized = True
             logger.info("PaddleOCR TextDetection 加载成功")
@@ -103,6 +104,7 @@ class HullNumberLocator:
 
         try:
             output = self._model.predict(crop)
+            logger.debug("predict 返回 %d 条结果, 类型: %s", len(output), type(output[0]) if output else "空")
 
             regions: list[TextRegion] = []
 
