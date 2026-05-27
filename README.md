@@ -345,18 +345,39 @@ pipeline:
 # ═══════════════════════════════════════════
 
 hull_locator:
-  # 开关
   enabled: true
+  score_threshold: 0.0
+  min_area: 0
 
-  # 后处理过滤
-  score_threshold: 0.0            # 模型返回后过滤（0.0~1.0）
-  min_area: 0                     # 最小区域面积（像素²）
+  # 通用
+  det_algorithm: "DB"             # DB / EAST / SAST / PSE / DB++ / FCE
+  det_model_dir: null
+  det_limit_side_len: 960
+  det_limit_type: "max"           # max / min
+  max_batch_size: 10
+  det_box_type: "quad"            # quad / poly
 
-  # PaddleOCR 内部参数
-  text_det_thresh: 0.3            # 像素级阈值：概率图中超过此值的像素视为文字
-  text_det_box_thresh: 0.5        # 框级阈值：候选框平均分数低于此值被过滤
-  text_det_unclip_ratio: 1.5      # 膨胀系数：值越大检测框越大
-  text_det_max_side_limit: 960    # 输入图像最大边长（像素）
+  # DB
+  det_db_thresh: 0.3
+  det_db_box_thresh: 0.6
+  det_db_unclip_ratio: 1.5
+  use_dilation: false
+  det_db_score_mode: "fast"       # fast / slow
+
+  # EAST
+  det_east_score_thresh: 0.8
+  det_east_cover_thresh: 0.1
+  det_east_nms_thresh: 0.2
+
+  # SAST
+  det_sast_score_thresh: 0.5
+  det_sast_nms_thresh: 0.5
+
+  # PSE
+  det_pse_thresh: 0.0
+  det_pse_box_thresh: 0.85
+  det_pse_min_area: 16
+  det_pse_scale: 1
 ```
 
 ---

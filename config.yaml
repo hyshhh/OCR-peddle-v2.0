@@ -105,23 +105,43 @@ pipeline:
 
   # 超过此帧数未出现的 track 被清理
   max_stale_frames: 30
-# 弦号定位配置（PaddleOCR TextDetection）
+# ═══════════════════════════════════════════
+# 弦号定位（PaddleOCR TextDetection）
+# ═══════════════════════════════════════════
 hull_locator:
-  # 弦号定位开关：true 启用 PaddleOCR 文字检测定位
+  # 开关
   enabled: true
 
-  # ── 后处理过滤参数 ──
-  # 文字检测置信度阈值（模型返回后过滤）
-  score_threshold: 0.0
-  # 最小文字区域面积（像素²），过滤噪声
-  min_area: 0
+  # ── 后处理过滤（我们自己的参数） ──
+  score_threshold: 0.0          # 文字检测置信度阈值（模型返回后过滤）
+  min_area: 0                   # 最小文字区域面积（像素²），过滤噪声
 
-  # ── PaddleOCR TextDetection 内部参数 ──
-  # 检测阈值：概率图中超过此值的像素视为文字（0.0~1.0）
-  text_det_thresh: 0.3
-  # 检测框阈值：候选框平均分数低于此值被过滤（0.0~1.0）
-  text_det_box_thresh: 0.5
-  # 膨胀系数：扩大检测框区域，值越大框越大
-  text_det_unclip_ratio: 1.5
-  # 输入图像最大边长限制（像素）
-  text_det_max_side_limit: 960
+  # ── 通用参数 ──
+  det_algorithm: "DB"           # 检测算法：DB, EAST, SAST, PSE, DB++, FCE
+  det_model_dir: null           # 检测模型路径（null 使用默认模型）
+  det_limit_side_len: 960       # 图像边长限制（像素）
+  det_limit_type: "max"         # 边长限制类型：max / min
+  max_batch_size: 10            # 预测 batch size
+  det_box_type: "quad"          # 框类型：quad（四点）/ poly（多边形，弯曲文本）
+
+  # ── DB 算法参数 ──
+  det_db_thresh: 0.3            # 概率图阈值：得分 > 此值的像素视为文字
+  det_db_box_thresh: 0.6        # 框阈值：框内平均得分 > 此值才保留
+  det_db_unclip_ratio: 1.5      # 膨胀系数：Vatti clipping 扩张系数
+  use_dilation: false           # 是否对分割结果做膨胀
+  det_db_score_mode: "fast"     # 得分计算：fast（外接矩形）/ slow（原始 polygon）
+
+  # ── EAST 算法参数 ──
+  det_east_score_thresh: 0.8    # score map 阈值
+  det_east_cover_thresh: 0.1    # 文本框平均得分阈值
+  det_east_nms_thresh: 0.2      # NMS 阈值
+
+  # ── SAST 算法参数 ──
+  det_sast_score_thresh: 0.5    # 得分阈值
+  det_sast_nms_thresh: 0.5      # NMS 阈值
+
+  # ── PSE 算法参数 ──
+  det_pse_thresh: 0.0           # 二值化阈值
+  det_pse_box_thresh: 0.85      # box 过滤阈值
+  det_pse_min_area: 16          # 最小面积
+  det_pse_scale: 1              # 输入/输出图比例（调大加速但降精度）

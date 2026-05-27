@@ -102,14 +102,7 @@ class ShipPipeline:
         # 弦号定位器（延迟初始化）
         self._locator: HullNumberLocator | None = None
         if self._locator_enabled:
-            self._locator = HullNumberLocator(
-                score_threshold=locator_cfg.get("score_threshold", 0.5),
-                min_area=locator_cfg.get("min_area", 100),
-                text_det_thresh=locator_cfg.get("text_det_thresh", 0.3),
-                text_det_box_thresh=locator_cfg.get("text_det_box_thresh", 0.5),
-                text_det_unclip_ratio=locator_cfg.get("text_det_unclip_ratio", 1.5),
-                text_det_max_side_limit=locator_cfg.get("text_det_max_side_limit", 960),
-            )
+            self._locator = HullNumberLocator(locator_cfg)
 
         # Demo 渲染器
         self._renderer = DemoRenderer(
