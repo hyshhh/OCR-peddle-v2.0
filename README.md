@@ -341,7 +341,8 @@ pipeline:
   demo: false
 
 # ═══════════════════════════════════════════
-# 弦号定位（PaddleOCR TextDetection）
+# 弦号定位（PaddleOCR TextDetection 3.5）
+# 注：3.x 参数名去掉了 det_ 前缀
 # ═══════════════════════════════════════════
 
 hull_locator:
@@ -349,35 +350,25 @@ hull_locator:
   score_threshold: 0.0
   min_area: 0
 
-  # 通用
-  det_algorithm: "DB"             # DB / EAST / SAST / PSE / DB++ / FCE
-  det_model_dir: null
-  det_limit_side_len: 960
-  det_limit_type: "max"           # max / min
-  max_batch_size: 10
-  det_box_type: "quad"            # quad / poly
+  # 模型
+  model_name: null               # 默认 PP-OCRv5_server_det
+  model_dir: null                # 本地模型目录
 
-  # DB
-  det_db_thresh: 0.3
-  det_db_box_thresh: 0.6
-  det_db_unclip_ratio: 1.5
-  use_dilation: false
-  det_db_score_mode: "fast"       # fast / slow
+  # 检测参数
+  limit_side_len: 960            # 图像边长限制（像素）
+  limit_type: "max"              # max / min
+  input_shape: null              # (C, H, W)
 
-  # EAST
-  det_east_score_thresh: 0.8
-  det_east_cover_thresh: 0.1
-  det_east_nms_thresh: 0.2
+  # DB 参数
+  thresh: 0.3                    # 概率图阈值
+  box_thresh: 0.6                # 框阈值
+  unclip_ratio: 1.5              # 膨胀系数
 
-  # SAST
-  det_sast_score_thresh: 0.5
-  det_sast_nms_thresh: 0.5
-
-  # PSE
-  det_pse_thresh: 0.0
-  det_pse_box_thresh: 0.85
-  det_pse_min_area: 16
-  det_pse_scale: 1
+  # 推理引擎
+  device: null                   # null 自动 / "cpu" / "gpu"
+  enable_mkldnn: null
+  use_tensorrt: null
+  cpu_threads: null
 ```
 
 ---

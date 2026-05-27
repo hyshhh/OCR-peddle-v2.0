@@ -3,8 +3,8 @@ HullNumberLocator — 基于 PaddleOCR TextDetection 的弦号定位
 
 在 YOLO crop 上运行文字检测，返回检测到的文字区域框（已转换为原始帧坐标）。
 
-支持所有 PaddleOCR TextDetection 参数，可通过 config.yaml 灵活切换检测算法
-（DB / EAST / SAST / PSE 等）。
+支持 PaddleOCR 3.5 TextDetection 参数（无前缀版本），
+可通过 config.yaml 灵活调整检测参数。
 """
 
 from __future__ import annotations
@@ -69,8 +69,7 @@ class HullNumberLocator:
             from paddleocr import TextDetection
             self._model = TextDetection(**self._paddle_kwargs)
             self._initialized = True
-            algo = self._paddle_kwargs.get("det_algorithm", "DB")
-            logger.info("PaddleOCR TextDetection 加载成功: algorithm=%s", algo)
+            logger.info("PaddleOCR TextDetection 加载成功")
         except ImportError:
             logger.error(
                 "PaddleOCR 未安装。请安装: pip install paddleocr>=3.5 paddlepaddle-gpu>=3.3"

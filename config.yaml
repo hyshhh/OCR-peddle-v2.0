@@ -106,8 +106,11 @@ pipeline:
   # 超过此帧数未出现的 track 被清理
   max_stale_frames: 30
 # ═══════════════════════════════════════════
-# 弦号定位（PaddleOCR TextDetection）
+# 弦号定位（PaddleOCR TextDetection 3.5）
 # ═══════════════════════════════════════════
+# 注：PaddleOCR 3.x 参数名去掉了 det_ 前缀，
+#     与 2.x 文档（det_db_thresh 等）不同。
+
 hull_locator:
   # 开关
   enabled: true
@@ -116,32 +119,22 @@ hull_locator:
   score_threshold: 0.0          # 文字检测置信度阈值（模型返回后过滤）
   min_area: 0                   # 最小文字区域面积（像素²），过滤噪声
 
-  # ── 通用参数 ──
-  det_algorithm: "DB"           # 检测算法：DB, EAST, SAST, PSE, DB++, FCE
-  det_model_dir: null           # 检测模型路径（null 使用默认模型）
-  det_limit_side_len: 960       # 图像边长限制（像素）
-  det_limit_type: "max"         # 边长限制类型：max / min
-  max_batch_size: 10            # 预测 batch size
-  det_box_type: "quad"          # 框类型：quad（四点）/ poly（多边形，弯曲文本）
+  # ── 模型选择 ──
+  model_name: null              # 模型名（null = 默认 PP-OCRv5_server_det）
+  model_dir: null               # 本地模型目录（null = 自动下载）
+
+  # ── 通用检测参数（TextDetectionMixin） ──
+  limit_side_len: 960           # 图像边长限制（像素）
+  limit_type: "max"             # 边长限制类型：max（最长边 ≤ 此值）/ min（最短边 ≥ 此值）
+  input_shape: null             # 模型输入形状 (C, H, W)，null 使用默认
 
   # ── DB 算法参数 ──
-  det_db_thresh: 0.3            # 概率图阈值：得分 > 此值的像素视为文字
-  det_db_box_thresh: 0.6        # 框阈值：框内平均得分 > 此值才保留
-  det_db_unclip_ratio: 1.5      # 膨胀系数：Vatti clipping 扩张系数
-  use_dilation: false           # 是否对分割结果做膨胀
-  det_db_score_mode: "fast"     # 得分计算：fast（外接矩形）/ slow（原始 polygon）
+  thresh: 0.3                   # 概率图阈值：得分 > 此值的像素视为文字
+  box_thresh: 0.6               # 框阈值：框内平均得分 > 此值才保留
+  unclip_ratio: 1.5             # 膨胀系数：Vatti clipping 扩张系数
 
-  # ── EAST 算法参数 ──
-  det_east_score_thresh: 0.8    # score map 阈值
-  det_east_cover_thresh: 0.1    # 文本框平均得分阈值
-  det_east_nms_thresh: 0.2      # NMS 阈值
-
-  # ── SAST 算法参数 ──
-  det_sast_score_thresh: 0.5    # 得分阈值
-  det_sast_nms_thresh: 0.5      # NMS 阈值
-
-  # ── PSE 算法参数 ──
-  det_pse_thresh: 0.0           # 二值化阈值
-  det_pse_box_thresh: 0.85      # box 过滤阈值
-  det_pse_min_area: 16          # 最小面积
-  det_pse_scale: 1              # 输入/输出图比例（调大加速但降精度）
+  # ── 推理引擎参数 ──
+  device: null                  # 推理设备：null 自动 / "cpu" / "gpu"
+  enable_mkldnn: null           # 启用 MKL-DNN（CPU 推理加速）
+  use_tensorrt: null            # 启用 TensorRT（GPU 推理加速）
+  cpu_threads: null             # CPU 线程数
