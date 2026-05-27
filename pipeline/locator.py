@@ -109,6 +109,7 @@ class HullNumberLocator:
             regions: list[TextRegion] = []
 
             for res in output:
+                logger.debug("result 类型: %s, 键: %s", type(res).__name__, list(res.keys()) if hasattr(res, 'keys') else "无")
                 boxes = None
                 scores = None
 
