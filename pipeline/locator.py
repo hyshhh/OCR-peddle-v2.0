@@ -37,14 +37,32 @@ class HullNumberLocator:
         self,
         score_threshold: float = 0.5,
         min_area: int = 100,
+        text_det_thresh: float = 0.3,
+        text_det_box_thresh: float = 0.5,
+        text_det_unclip_ratio: float = 1.5,
+        text_det_max_side_limit: int = 960,
+        use_dilation: bool = True,
+        det_db_score_mode: str = "fast",
     ):
         """
         Args:
-            score_threshold: 文字检测置信度阈值。
+            score_threshold: 文字检测置信度阈值（后处理过滤）。
             min_area: 最小文字区域面积（像素²），过滤噪声。
+            text_det_thresh: 检测阈值，概率图中超过此值的像素视为文字。
+            text_det_box_thresh: 检测框阈值，候选框平均分数低于此值被过滤。
+            text_det_unclip_ratio: 膨胀系数，扩大检测框区域。
+            text_det_max_side_limit: 输入图像最大边长限制（像素）。
+            use_dilation: 是否使用膨胀操作。
+            det_db_score_mode: 评分模式，"fast" 或 "slow"。
         """
         self._score_threshold = score_threshold
         self._min_area = min_area
+        self._text_det_thresh = text_det_thresh
+        self._text_det_box_thresh = text_det_box_thresh
+        self._text_det_unclip_ratio = text_det_unclip_ratio
+        self._text_det_max_side_limit = text_det_max_side_limit
+        self._use_dilation = use_dilation
+        self._det_db_score_mode = det_db_score_mode
         self._model = None
         self._initialized = False
 
@@ -55,9 +73,19 @@ class HullNumberLocator:
 
         try:
             from paddleocr import TextDetection
-            self._model = TextDetection()
+            self._model = TextDetection(
+                text_det_thresh=self._text_det_thresh,
+                text_det_box_thresh=self._text_det_box_thresh,
+                text_det_unclip_ratio=self._text_det_unclip_ratio,
+                text_det_max_side_limit=self._text_det_max_side_limit,
+                use_dilation=self._use_dilation,
+                det_db_score_mode=self._det_db_score_mode,
+            )
             self._initialized = True
-            logger.info("PaddleOCR TextDetection 模型加载成功")
+            logger.info(
+                "PaddleOCR TextDetection 模型加载成功: thresh=%.2f, box_thresh=%.2f, unclip=%.2f",
+                self._text_det_thresh, self._text_det_box_thresh, self._text_det_unclip_ratio,
+            )
         except ImportError:
             logger.error(
                 "PaddleOCR 未安装。请安装: pip install paddleocr>=3.5 paddlepaddle-gpu>=3.3"

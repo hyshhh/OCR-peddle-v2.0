@@ -105,6 +105,12 @@ class ShipPipeline:
             self._locator = HullNumberLocator(
                 score_threshold=locator_cfg.get("score_threshold", 0.5),
                 min_area=locator_cfg.get("min_area", 100),
+                text_det_thresh=locator_cfg.get("text_det_thresh", 0.3),
+                text_det_box_thresh=locator_cfg.get("text_det_box_thresh", 0.5),
+                text_det_unclip_ratio=locator_cfg.get("text_det_unclip_ratio", 1.5),
+                text_det_max_side_limit=locator_cfg.get("text_det_max_side_limit", 960),
+                use_dilation=locator_cfg.get("use_dilation", True),
+                det_db_score_mode=locator_cfg.get("det_db_score_mode", "fast"),
             )
 
         # Demo 渲染器

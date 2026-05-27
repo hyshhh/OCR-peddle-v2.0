@@ -109,7 +109,23 @@ pipeline:
 hull_locator:
   # 弦号定位开关：true 启用 PaddleOCR 文字检测定位
   enabled: true
-  # 文字检测置信度阈值
+
+  # ── 后处理过滤参数 ──
+  # 文字检测置信度阈值（模型返回后过滤）
   score_threshold: 0.0
   # 最小文字区域面积（像素²），过滤噪声
   min_area: 0
+
+  # ── PaddleOCR TextDetection 内部参数 ──
+  # 检测阈值：概率图中超过此值的像素视为文字（0.0~1.0）
+  text_det_thresh: 0.3
+  # 检测框阈值：候选框平均分数低于此值被过滤（0.0~1.0）
+  text_det_box_thresh: 0.5
+  # 膨胀系数：扩大检测框区域，值越大框越大
+  text_det_unclip_ratio: 1.5
+  # 输入图像最大边长限制（像素）
+  text_det_max_side_limit: 960
+  # 是否使用膨胀操作
+  use_dilation: true
+  # 评分模式："fast" 或 "slow"
+  det_db_score_mode: "fast"

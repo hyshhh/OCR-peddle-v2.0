@@ -64,6 +64,12 @@ _DEFAULTS: dict[str, Any] = {
         "enabled": False,
         "score_threshold": 0.5,
         "min_area": 100,
+        "text_det_thresh": 0.3,
+        "text_det_box_thresh": 0.5,
+        "text_det_unclip_ratio": 1.5,
+        "text_det_max_side_limit": 960,
+        "use_dilation": True,
+        "det_db_score_mode": "fast",
     },
     "app": {
         "log_level": "INFO",
