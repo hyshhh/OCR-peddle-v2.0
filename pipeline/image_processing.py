@@ -251,15 +251,24 @@ def build_pipeline(steps: list[dict]) -> list[tuple[callable, dict]]:
     根据配置构建预处理流水线。
 
     Args:
-        steps: [{"name": "wavelet_denoise", "params": {"level": 2}}, ...]
+        steps: 支持两种格式：
+            - 简单格式：["wavelet_denoise", "convolution_sharpen"]
+            - 详细格式：[{"name": "wavelet_denoise", "params": {"level": 2}}]
 
     Returns:
         [(func, params), ...]
     """
     pipeline = []
     for step in steps:
-        name = step.get("name", "")
-        params = step.get("params", {})
+        if isinstance(step, str):
+            name = step
+            params = {}
+        elif isinstance(step, dict):
+            name = step.get("name", "")
+            params = step.get("params", {})
+        else:
+            continue
+
         if name not in ALGORITHMS:
             logger.warning("未知的图像处理算法: %s，跳过", name)
             continue
