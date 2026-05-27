@@ -33,6 +33,8 @@ def wavelet_denoise(
     try:
         import pywt
 
+        h, w = crop.shape[:2]
+
         if crop.ndim == 3:
             # 逐通道处理
             result = crop.copy()
@@ -47,6 +49,8 @@ def wavelet_denoise(
                     )
                     denoised_coeffs.append(denoised_detail)
                 denoised = pywt.waverec2(denoised_coeffs, method)
+                # 裁剪到原始尺寸（小波重建可能产生微小尺寸差异）
+                denoised = denoised[:h, :w]
                 result[:, :, c] = np.clip(denoised, 0, 255).astype(np.uint8)
             return result
         else:
@@ -58,6 +62,7 @@ def wavelet_denoise(
                 )
                 denoised_coeffs.append(denoised_detail)
             denoised = pywt.waverec2(denoised_coeffs, method)
+            denoised = denoised[:h, :w]
             return np.clip(denoised, 0, 255).astype(np.uint8)
     except ImportError:
         logger.warning("pywt 未安装，跳过去噪。安装: pip install PyWavelets")
