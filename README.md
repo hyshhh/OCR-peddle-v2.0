@@ -1,12 +1,29 @@
-# Ship Hull Agent — 船弦号识别系统
+<h1 align="center">Ship Hull Agent</h1>
 
-> 基于 **LangChain + FAISS + YOLO + Qwen3.5 VLM + PaddleOCR** 的智能船弦号识别系统
->
-> 两大核心模块：**Agent 对话检索**（精确匹配 + RAG 语义搜索）+ **Pipeline 视频处理**（实时检测 + 跟踪 + 识别 + 弦号定位）
+<p align="center">
+  <strong>基于 LangChain + FAISS + YOLO + Qwen3 VLM + PaddleOCR 的智能船弦号识别系统</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/LangChain-0.3-orange" alt="LangChain">
+  <img src="https://img.shields.io/badge/YOLOv8-green" alt="YOLO">
+  <img src="https://img.shields.io/badge/Qwen3-VL-purple" alt="Qwen3">
+  <img src="https://img.shields.io/badge/PaddleOCR-3.5-blue" alt="PaddleOCR">
+  <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
+</p>
+
+<p align="center">
+  两大核心模块：<strong>Agent 对话检索</strong>（精确匹配 + RAG 语义搜索）+ <strong>Pipeline 视频处理</strong>（实时检测 + 跟踪 + 识别 + 弦号定位）
+</p>
 
 ---
 
-## 功能概览
+## Features
+
+<table>
+<tr>
+<td width="50%">
 
 ### Agent 对话检索
 
@@ -14,85 +31,86 @@
 |------|------|
 | 精确弦号匹配 | 输入弦号直接查字典，O(1) 响应 |
 | RAG 语义检索 | FAISS 向量库对船描述做语义相似度匹配 |
-| 智能路由 | 有弦号先精确查，查不到再语义检索；纯描述直接检索 |
+| 智能路由 | 有弦号先精确查，查不到再语义检索 |
 | 阈值过滤 | 语义检索结果低于置信度阈值自动过滤 |
 | 向量库持久化 | FAISS 索引首次构建后缓存磁盘，后续直接加载 |
 | 自动变更检测 | MD5 哈希比对 CSV，数据变更自动重建向量库 |
-| 批量建库 | 视觉模型自动识别图片生成弦号+描述，支持查重和原子写入 |
+| 批量建库 | 视觉模型自动识别图片生成弦号+描述 |
+
+</td>
+<td width="50%">
 
 ### Pipeline 视频处理
 
 | 功能 | 说明 |
 |------|------|
-| YOLO 船只检测 | 基于 ultralytics YOLO，支持 ByteTrack / BoTSORT 追踪 |
-| 跟踪 ID 绑定 | track ID 绑定唯一弦号，跟踪持续则沿用，无需重复调用 VLM |
-| 定时刷新 | `enable_refresh` 开启后，每隔 `gap_num` 帧自动重新识别已跟踪船只 |
-| 弦号定位 | PaddleOCR TextDetection 在 crop 中定位文字区域（可选） |
-| Qwen3.5 VLM 识别 | 视觉大模型对裁剪图像进行弦号识别与描述生成 |
-| Agent/硬编码双模式 | `use_agent` 开关控制推理链路编排方式 |
+| YOLO 船只检测 | ultralytics YOLO + ByteTrack / BoTSORT 追踪 |
+| 跟踪 ID 绑定 | track ID 绑定唯一弦号，跟踪持续则沿用 |
+| 定时刷新 | 每隔 N 帧自动重新识别已跟踪船只 |
+| 弦号定位 | PaddleOCR TextDetection 在 crop 中定位文字区域 |
+| Qwen3 VLM 识别 | 视觉大模型进行弦号识别与描述生成 |
 | 级联/并发双模式 | 级联同步等待；并发双层架构（帧级队列 + crop 级并发） |
-| 智能跳帧 | `detect_every_n_frames` 控制 YOLO 检测频率，`process_every_n_frames` 控制推理频率 |
-| Crop 尺寸归一化 | 小的放大、大的缩小，统一到 512~1024px 范围 |
-| FPS 统计 | 10 秒滑动窗口统计码流和处理帧率 |
-| 延迟统计 | 各阶段（YOLO / 定位 / Agent / 渲染）avg/p50/p95/max 延迟监控 |
-| 截图保存 | 每 N 帧有已识别 track 时自动保存带检测框的渲染帧 |
-| 提示词切换 | detailed（详细）/ brief（简略）运行时可切换 |
-| 多源输入 | 视频文件（MP4/AVI/MKV）、USB 相机、RTSP/HTTP 视频流 |
-| Demo 可视化 | 实时显示检测框、跟踪 ID、识别结果、弦号定位虚线框、FPS HUD |
+| 智能跳帧 | YOLO 检测频率与推理频率独立控制 |
+| Demo 可视化 | 实时显示检测框、跟踪 ID、识别结果、弦号定位框 |
+
+</td>
+</tr>
+</table>
 
 ---
 
-## 项目结构
+## Architecture
 
 ```
-OCR-peddle/
-├── config.py                # 配置读取：config.yaml + 内置默认值
-├── config.yaml              # 全局配置文件（LLM / Embedding / Pipeline / HullLocator）
-├── build_db.py              # 批量建库脚本（图片 → 弦号+描述 → CSV）
-│
-├── database/__init__.py     # ShipDatabase：CSV 数据源 + FAISS 向量库 + 自动变更检测
-├── tools/__init__.py        # LangChain @tool：recognize_ship / lookup_by_hull_number / retrieve_by_description
-├── agent/__init__.py        # ShipHullAgent：ReAct Agent + 两步链路（lookup → retrieve）
-├── agent/result.py          # AgentResult：识别结果数据结构
-├── cli/__init__.py          # Rich CLI：单次查询 / 交互 REPL / --verbose 调用链
-│
-├── pipeline/                # 视频处理流水线
-│   ├── __main__.py          # python -m pipeline 入口
-│   ├── cli.py               # 命令行参数解析
-│   ├── pipeline.py          # 主流水线编排（ShipPipeline）
-│   ├── detector.py          # YOLO 船只检测 + ByteTrack 跟踪 + ultralytics 兼容性修补
-│   ├── locator.py           # PaddleOCR TextDetection 弦号定位（crop 内文字区域检测）
-│   ├── agent_inference.py   # Qwen3.5 VLM 弦号识别推理（单张/批量并发）
-│   ├── tracker.py           # 跟踪状态管理（track ID ↔ 弦号绑定，线程安全）
-│   ├── fps.py               # 10 秒滑动窗口 FPS 统计 + 延迟统计（LatencyMeter）
-│   ├── video_input.py       # 视频/相机/视频流统一输入
-│   ├── demo.py              # Demo 可视化渲染（检测框 + 弦号定位框 + HUD，PIL 中文渲染）
-│   └── output.py            # 截图保存（ScreenshotSaver）
-│
-├── data/ships.csv           # 船只数据库
-├── tests/                   # 单元测试（配置/数据库/FPS/TrackManager/并发压力）
-├── .env.example             # 环境变量模板
-├── pyproject.toml           # 项目元数据 + 依赖声明（v0.3.0）
-└── requirements.txt         # 依赖清单
+                           ┌─────────────────────────────────────────────────────────────────┐
+                           │                    Pipeline 视频处理流水线                       │
+                           └─────────────────────────────────────────────────────────────────┘
+
+  ┌──────────────┐     ┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+  │   视频输入    │────▶│  YOLO 检测+跟踪   │────▶│  裁剪船只 (crop)  │────▶│  弦号定位（可选） │
+  │ 文件/相机/流  │     │  ByteTrack       │     │  尺寸归一化       │     │  PaddleOCR       │
+  └──────────────┘     └──────────────────┘     └──────────────────┘     └────────┬─────────┘
+                                                                                  │
+                    ┌──────────────────────────────────────────────────────────────┘
+                    │
+                    ▼
+  ┌─────────────────────────────────────────────────────────────────────────────────────────┐
+  │                              三步链路推理                                                │
+  │  ┌───────────────┐    ┌───────────────┐    ┌───────────────┐    ┌───────────────┐       │
+  │  │  VLM 识别     │───▶│  精确查库     │───▶│  语义检索     │───▶│  绑定结果     │       │
+  │  │  弦号+描述    │    │  O(1) 匹配    │    │  FAISS 向量库 │    │  track 绑定   │       │
+  │  └───────────────┘    └───────────────┘    └───────────────┘    └───────────────┘       │
+  └─────────────────────────────────────────────────────────────────────────────────────────┘
+                    │
+                    ▼
+  ┌─────────────────────────────────────────────────────────────────────────────────────────┐
+  │  渲染检测框 + 弦号定位框 + 识别结果 + FPS HUD ──▶ 输出视频 / Demo 窗口                    │
+  └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 快速开始
+## Quick Start
 
-### 1. 克隆项目
+### 1. Clone & Install
 
 ```bash
-git clone https://github.com/hyshhh/OCR-peddle.git
+git clone https://github.com/hyshhh/OCR-peddle-v2.0.git
 cd OCR-peddle
+
+# 安装依赖
+pip install -e .
+
+# 开发模式（含测试依赖）
+pip install -e ".[dev]"
 ```
 
-### 2. 启动视觉模型服务
+### 2. Start VLM Service
 
-使用 vLLM 部署 Qwen3.5 VLM（兼容 OpenAI API 格式）：
+使用 vLLM 部署 Qwen3 VLM（兼容 OpenAI API 格式）：
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 vllm serve /path/to/Qwen3.5-2B-AWQ \
+CUDA_VISIBLE_DEVICES=0 vllm serve /path/to/Qwen3-VL-4B-AWQ \
   --api-key abc123 \
   --served-model-name Qwen/Qwen3-VL-4B-AWQ \
   --max-model-len 10240 \
@@ -103,16 +121,7 @@ CUDA_VISIBLE_DEVICES=0 vllm serve /path/to/Qwen3.5-2B-AWQ \
   --tool-call-parser qwen3_xml
 ```
 
-| 参数 | 值 | 说明 |
-|------|-----|------|
-| `--served-model-name` | `Qwen/Qwen3-VL-4B-AWQ` | 对外暴露的模型名称 |
-| `--api-key` | `abc123` | API 密钥 |
-| `--port` | `7890` | 服务端口 |
-| `--max-model-len` | `10240` | 最大上下文长度 |
-| `--gpu-memory-utilization` | `0.15` | GPU 显存占用比例 |
-| `--max-num-seqs` | `10` | 最大并发序列数 |
-
-### 3. 启动 Embedding 服务（可选，用于 RAG 检索）
+### 3. Start Embedding Service (Optional, for RAG)
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 python -m vllm.entrypoints.openai.api_server \
@@ -125,43 +134,32 @@ CUDA_VISIBLE_DEVICES=1 python -m vllm.entrypoints.openai.api_server \
   --port 7891
 ```
 
-### 4. 安装依赖
-
-```bash
-pip install -e .
-# 开发模式（含测试依赖）
-pip install -e ".[dev]"
-```
-
-### 5. 配置
+### 4. Configure
 
 ```bash
 cp .env.example .env
 ```
 
-编辑 `config.yaml`，主要配置项：
+Edit `config.yaml`:
 
 ```yaml
-# LLM 对话模型
 llm:
   model: "Qwen/Qwen3-VL-4B-AWQ"
   api_key: "abc123"
   base_url: "http://localhost:7890/v1"
   temperature: 0.0
 
-# Embedding 模型
 embed:
   model: "Qwen3-Embedding-0.6B"
   api_key: "abc123"
   base_url: "http://localhost:7891/v1"
 
-# RAG 检索
 retrieval:
   top_k: 3
   score_threshold: 0.5
 ```
 
-### 6. 运行
+### 5. Run
 
 ```bash
 # Agent 单次查询
@@ -176,30 +174,31 @@ python -m pipeline.cli video.mp4 --demo --output result.mp4
 
 ---
 
-## Agent 使用示例
+## Usage Examples
 
-### 精确匹配
+### Agent Query
 
-```
+**精确匹配**
+
+```bash
 $ ship-hull "帮我查一下弦号0014是什么船"
 
 识别结果：弦号 0014，描述：白色大型客轮，上层建筑为蓝色涂装，船尾有直升机停机坪
 ```
 
-### 语义检索（弦号不存在）
+**语义检索（弦号不存在）**
 
-```
+```bash
 $ ship-hull "弦号9999，这是一艘大型白色邮轮，船身有蓝色条纹装饰，有三个烟囱"
 
 未找到对应弦号，根据描述检索到最相似的船：
 1. 弦号 0123，描述：白色邮轮，船身有红蓝条纹装饰，三座烟囱（相似度：0.9234）
-2. 弦号 0014，描述：白色大型客轮，上层建筑为蓝色涂装，船尾有直升机停机坪（相似度：0.7521）
-3. 弦号 0789，描述：白色科考船，船尾有A型吊架，甲板有多个实验室舱（相似度：0.6103）
+2. 弦号 0014，描述：白色大型客轮，上层建筑为蓝色涂装（相似度：0.7521）
 ```
 
-### 详细模式（调试工具调用链）
+**详细模式（调试调用链）**
 
-```
+```bash
 $ ship-hull --verbose "我看到一艘灰色的军舰，外形很隐身"
 
 +------------------- Agent 调用链 -------------------+
@@ -214,144 +213,7 @@ $ ship-hull --verbose "我看到一艘灰色的军舰，外形很隐身"
 +----------------------------------------------------+
 ```
 
-### Python 库调用
-
-```python
-from agent import create_agent
-
-agent = create_agent()
-answer = agent.run("弦号0014是什么船")
-print(answer)
-```
-
-### Agent 工作流程
-
-```
-用户输入
-  |
-  +-- 包含弦号？
-  |    -> lookup_by_hull_number 精确查找
-  |         +-- found=true  -> 直接返回结果
-  |         +-- found=false -> retrieve_by_description 语义检索
-  |
-  +-- 只有描述？
-       -> retrieve_by_description 语义检索
-            +-- FAISS 向量相似度匹配（top_k + 阈值过滤）
-            +-- 返回最匹配的弦号 + 描述 + 相似度
-```
-
-### RAG 向量库设计
-
-每条船记录构建为一个 Document：
-
-```
-page_content = "弦号 0014\n白色大型客轮，上层建筑为蓝色涂装，船尾有直升机停机坪"
-metadata     = {"hull_number": "0014", "description": "白色大型客轮..."}
-```
-
-- `page_content` 用于 Embedding 向量化（弦号 + 描述一起编码，语义更丰富）
-- `metadata` 用于提取结构化结果
-- FAISS 索引构建后持久化到 `VECTOR_STORE_PATH`，后续启动直接加载
-
----
-
-## 批量建库（build_db.py）
-
-通过图片自动识别船只，构建 CSV 数据库。调用视觉模型对每张图片生成弦号 + 描述。
-
-### 基本用法
-
-```bash
-python3 build_db.py ./images
-```
-
-支持格式：`.jpg` `.jpeg` `.png` `.bmp` `.webp` `.gif`
-
-### 处理流程
-
-对每张图片：
-
-1. **调用视觉模型**识别船只 -> 弦号 + 描述
-2. **查重检查**：弦号已存在 -> 提示跳过 / 覆盖 / 手动输入
-3. **弦号确认**：新弦号 -> 提示确认 / 手动修正
-4. **立即写入 CSV**（中断不丢数据）
-
-### 交互示例
-
-```
-$ python3 build_db.py ./my_ship_photos
-
-已有数据库: ./data/ships.csv（4 条记录）
-找到 12 张图片，开始识别...
-
-使用模型: Qwen/Qwen3-VL-4B-AWQ
-服务地址: http://localhost:7890/v1
-
-============================================================
-[1/12] 处理: ship_001.jpg
-============================================================
-
-  识别结果:
-     弦号: 0014
-     描述: 白色大型客轮，上层建筑为蓝色涂装，船尾有直升机停机坪
-
-  弦号 [0014] 已存在于数据库中
-  按 1 跳过 / 按 2 覆盖 / 按 3 手动输入新弦号
-  请选择 [1/2/3] (1): 1
-  已跳过
-
-============================================================
-处理完成
-   总计: 12 张图片 | 成功: 10 条 | 跳过: 2 条
-   数据库: ./data/ships.csv（共 14 条记录）
-============================================================
-```
-
-### 查重逻辑
-
-| 场景 | 处理方式 |
-|------|----------|
-| 模型识别出弦号，数据库已存在 | 提示：跳过 / 覆盖 / 手动输入新弦号 |
-| 用户手动输入弦号，数据库已存在 | 提示：跳过 / 覆盖 |
-| 无弦号，用文件名作 fallback | 自动加后缀 `_2`、`_3` 避免覆盖 |
-
-每张图片识别后**立即写入 CSV**（原子写入：先写临时文件再重命名），`Ctrl+C` 不丢数据。
-
----
-
-## Pipeline 视频处理流水线
-
-基于 **YOLO + Qwen3.5 VLM + PaddleOCR + Agent** 的实时船只检测与弦号识别。
-
-### 架构
-
-```
-+----------------+     +-------------------+     +--------------------+
-|  视频输入       |---->|  YOLO 检测+跟踪    |---->|  裁剪船只区域 (crop) |
-| 文件/相机/流    |     |  ByteTrack        |     +---------+----------+
-+----------------+     +-------------------+               |
-                                                            v
-                                                 +--------------------+
-                                                 |  弦号定位（可选）    |
-                                                 |  PaddleOCR TextDet  |
-                                                 +---------+----------+
-                                                            |
-                                                            v
-                                                 +--------------------+
-                                                 |  三步链路推理       |
-                                                 |  VLM 识别弦号+描述  |
-                                                 |  -> 精确查库        |
-                                                 |  -> 语义检索        |
-                                                 +---------+----------+
-                                                            |
-                                                            v
-+----------------+     +-------------------+     +--------------------+
-|  输出视频       |<----|  渲染检测框+结果    |<----|  绑定 track 结果    |
-| + Demo 窗口    |     |  DemoRenderer      |     |  精确匹配/语义检索  |
-+----------------+     +-------------------+     +--------------------+
-```
-
-### 快速使用
+### Pipeline Commands
 
 ```bash
 # 处理视频文件
@@ -374,239 +236,59 @@ python -m pipeline.cli video.mp4 --hull-locator --demo
 
 # 简略提示词 + 每 5 帧处理一次（提速）
 python -m pipeline.cli video.mp4 --prompt-mode brief --process-every 5
-
-# 限制处理帧数 + 详细日志
-python -m pipeline.cli video.mp4 --max-frames 500 --verbose
-```
-
-### 命令行参数
-
-| 参数 | 简写 | 说明 | 默认值 |
-|------|------|------|--------|
-| `source` | -- | 输入源：文件路径 / 相机号 / RTSP URL | **必填** |
-| `--output` | `-o` | 输出视频路径 | 无 |
-| `--demo` | -- | 在输出上叠加检测框和识别结果 | 沿用 config.yaml |
-| `--display` | -- | 实时显示窗口（需有显示器） | 关闭 |
-| `--concurrent` | `-c` | 并发模式（默认级联模式） | 沿用 config.yaml |
-| `--agent` | -- | 使用 LangChain Agent 模式 | 关闭 |
-| `--no-agent` | -- | 使用硬编码模式（直接调用 VLM+查库+检索） | -- |
-| `--enable-refresh` | -- | 开启定时刷新（每隔 gap_num 帧重新识别已跟踪船只） | 沿用 config.yaml |
-| `--no-refresh` | -- | 关闭定时刷新 | -- |
-| `--gap-num` | -- | 定时刷新间隔帧数 | `150` |
-| `--max-concurrent` | -- | 最大并发 Agent 推理数 | `4` |
-| `--max-queued-frames` | -- | 并发模式最大队列深度（防 OOM） | `30` |
-| `--process-every` | -- | 每 N 帧处理一次 | 沿用 config.yaml |
-| `--detect-every` | -- | 每 N 帧做一次 YOLO 检测 | 沿用 config.yaml |
-| `--prompt-mode` | -- | 提示词模式：`detailed` / `brief` | 沿用 config.yaml |
-| `--max-frames` | -- | 最大处理帧数（0=不限） | `0` |
-| `--yolo-model` | -- | YOLO 模型路径（不存在自动下载） | `yolov8n.pt` |
-| `--device` | -- | 推理设备：`cpu` / GPU 编号 | 自动 |
-| `--conf` | -- | 检测置信度阈值 | `0.25` |
-| `--hull-locator` | -- | 启用弦号定位（PaddleOCR TextDetection） | 沿用 config.yaml |
-| `--no-hull-locator` | -- | 禁用弦号定位 | -- |
-| `--no-screenshots` | -- | 关闭自动截图保存 | 沿用 config.yaml |
-| `--verbose` | `-v` | 详细日志输出 | 关闭 |
-
-### 级联 vs 并发模式
-
-**级联模式**（默认，`concurrent_mode: false`）
-
-```
-帧 N -> YOLO 检测 -> 弦号定位 -> 同步等待 VLM 返回 -> 绑定结果 -> 渲染帧 N -> 帧 N+1
-```
-
-- 简单可靠，帧间严格有序
-- 速度受 VLM 延迟影响（每帧需等推理完成）
-
-**并发模式**（`--concurrent` / `concurrent_mode: true`）
-
-```
-帧 N ---> YOLO 检测 ---> 弦号定位 ---> crop 送入队列 ------------------> 渲染帧 N
-                                  |                                     ^
-                                  v                                     |
-                          VLM 线程池异步推理 ---> 结果回填到 track  -------+
-```
-
-- 高吞吐，帧率不受 VLM 延迟影响
-- 需要更多显存，结果可能有 1-2 帧延迟
-
-### 双层并发架构
-
-```
-外层：帧级任务队列
-  +-- max_queued_frames 限制深度（防 OOM）
-  +-- 队列半满时跳过入队（背压机制）
-
-内层：crop 级 API 并发
-  +-- max_concurrent 个 VLM 工作线程
-  +-- Semaphore 控制并发数
-  +-- 结果放入结果队列，按帧顺序排空
-```
-
-### 弦号定位（PaddleOCR TextDetection）
-
-在 YOLO 检测框内使用 PaddleOCR TextDetection 定位文字区域，坐标自动转换为原始帧坐标系。
-
-```
-YOLO crop (原始未 resize)
-    |
-    v
-PaddleOCR TextDetection -> 多边形文字区域
-    |
-    v
-坐标转换: crop 坐标 + offset -> 帧坐标
-    |
-    v
-过滤: score_threshold + min_area
-    |
-    v
-输出: TextRegion(bbox_frame, confidence, polygon)
-```
-
-配置项（`config.yaml`）：
-
-```yaml
-hull_locator:
-  enabled: true           # 开关
-  score_threshold: 0.0    # 文字检测置信度阈值
-  min_area: 0             # 最小文字区域面积（像素^2）
-```
-
-### 跟踪与识别流程
-
-```
-新 track 出现（YOLO 分配 ID）
-  |
-  v
-标记 pending -> VLM 推理（弦号 + 描述）
-                    |
-        +-----------+-----------+
-        |                       |
-   识别到弦号              未识别到弦号
-        |                       |
-  数据库精确匹配           数据库语义检索
-        |                       |
-   +----+----+             +----+----+
-   |         |             |         |
- 匹配成功  未匹配        匹配成功  未匹配
-   |         |             |         |
-(库内确定id) (未知id)   (库内确定id) (未知id)
-```
-
-**后续帧**：track ID 沿用已识别结果，不再调用 VLM，直到 track 消失。
-
-**定时刷新**（`enable_refresh: true`）：已识别的 track 每隔 `gap_num` 帧（默认 150）会被重新送入识别流程，以应对船只外观变化或场景切换导致的识别过时。
-
-### 交互按键（display 模式）
-
-| 按键 | 动作 |
-|------|------|
-| `q` | 退出 |
-| `d` | 切换提示词模式（详细 <-> 简略） |
-| `p` | 暂停 / 继续 |
-| `s` | 截图 |
-
-### Python API
-
-```python
-from config import load_config
-from pipeline import ShipPipeline
-
-config = load_config()
-pipeline = ShipPipeline(config=config)
-
-# 处理视频
-stats = pipeline.process(
-    source="video.mp4",
-    output_path="result.mp4",
-    display=False,
-    max_frames=1000,
-)
-# -> {'total_frames': 1000, 'total_detections': 342, 'total_tracks': 8,
-#    'recognized_tracks': 6, 'elapsed_seconds': 45.2, 'avg_fps': 22.1, 'mode': 'cascade'}
-
-# 运行时控制
-pipeline.set_demo(True)              # 开启可视化
-pipeline.set_prompt_mode("brief")    # 切换简略提示词
-pipeline.switch_to_concurrent(True)  # 切换并发模式
 ```
 
 ---
 
-## 配置说明
+## Configuration
 
-### config.yaml 完整参考
+### Config Reference
 
 ```yaml
-# -- 对话模型 --
+# ═══════════════════════════════════════════
+# LLM / Embedding / RAG
+# ═══════════════════════════════════════════
+
 llm:
   model: "Qwen/Qwen3-VL-4B-AWQ"
   api_key: "abc123"
   base_url: "http://localhost:7890/v1"
   temperature: 0.0
 
-# -- Embedding 模型 --
 embed:
   model: "Qwen3-Embedding-0.6B"
   api_key: "abc123"
   base_url: "http://localhost:7891/v1"
 
-# -- RAG 检索 --
 retrieval:
   top_k: 3
   score_threshold: 0.5
 
-# -- 向量库 --
 vector_store:
   persist_path: "./vector_store"
   auto_rebuild: false
 
-# -- 应用 --
-app:
-  log_level: "INFO"
-  ship_db_path: "./data/ships.csv"
+# ═══════════════════════════════════════════
+# Pipeline 视频处理流水线
+# ═══════════════════════════════════════════
 
-# -- Pipeline 视频处理流水线 --
 pipeline:
-  # 级联/并发双模式
-  concurrent_mode: false
+  # 模式
+  concurrent_mode: false          # false=级联 true=并发
+  max_concurrent: 4               # 并发模式最大推理数
+  max_queued_frames: 30           # 最大队列深度（防 OOM）
 
-  # 最大并发 VLM 推理数
-  max_concurrent: 4
-
-  # 最大队列深度（并发模式下防止 OOM）
-  max_queued_frames: 30
-
-  # 每 N 帧触发一次 Agent 推理（1=每帧，30=每30帧）
-  process_every_n_frames: 15
-
-  # 每 N 帧做一次 YOLO 检测（1=每帧，5=隔帧检测）
-  detect_every_n_frames: 5
-
-  # 截图保存
-  output_dir: "./output"
-  save_screenshots: true
-
-  # 提示词模式
-  prompt_mode: "detailed"
-
-  # 定时刷新
-  enable_refresh: false
-  gap_num: 150
-
-  # Demo
-  demo: false
+  # 帧控制
+  process_every_n_frames: 15      # 每 N 帧触发推理
+  detect_every_n_frames: 5        # 每 N 帧做 YOLO 检测
 
   # YOLO
   yolo_model: "yolov8n.pt"
-  device: ""
+  device: ""                      # "" 自动 / "cpu" / "0" GPU
   conf_threshold: 0.25
+  detect_classes: [8]             # COCO: 8=boat
 
-  # Crop 尺寸归一化
-  crop_min_size: 512
-  crop_max_size: 1024
-
-  # 追踪器
+  # 追踪
   tracker: "bytetrack"
   tracker_params:
     track_high_thresh: 0.5
@@ -614,143 +296,129 @@ pipeline:
     new_track_thresh: 0.6
     track_buffer: 90
     match_thresh: 0.5
-
-  # 只检测 COCO 类别 8（船）
-  detect_classes: [8]
-
-  # 超过此帧数未出现的 track 被清理
   max_stale_frames: 30
 
-# -- 弦号定位（PaddleOCR TextDetection）--
+  # Crop
+  crop_min_size: 512
+  crop_max_size: 1024
+
+  # 其他
+  prompt_mode: "detailed"         # detailed / brief
+  enable_refresh: false
+  gap_num: 150
+  save_screenshots: true
+  output_dir: "./output"
+  demo: false
+
+# ═══════════════════════════════════════════
+# 弦号定位（PaddleOCR TextDetection）
+# ═══════════════════════════════════════════
+
 hull_locator:
+  # 开关
   enabled: true
-  score_threshold: 0.0
-  min_area: 0
+
+  # 后处理过滤
+  score_threshold: 0.0            # 模型返回后过滤（0.0~1.0）
+  min_area: 0                     # 最小区域面积（像素²）
+
+  # PaddleOCR 内部参数
+  text_det_thresh: 0.3            # 像素级阈值：概率图中超过此值的像素视为文字
+  text_det_box_thresh: 0.5        # 框级阈值：候选框平均分数低于此值被过滤
+  text_det_unclip_ratio: 1.5      # 膨胀系数：值越大检测框越大
+  text_det_max_side_limit: 960    # 输入图像最大边长（像素）
+  use_dilation: true              # 是否使用膨胀操作
+  det_db_score_mode: "fast"       # 评分模式：fast / slow
 ```
 
 ---
 
-## 本地部署 Embedding 模型（可选）
+## Project Structure
 
-默认使用 DashScope 云端（按 token 收费、有 batch 限制）。推荐本地部署，免费无限制。
-
-### 推荐模型
-
-| 模型 | 参数量 | 显存 | 特点 |
-|------|--------|------|------|
-| **Qwen3-Embedding-0.6B** | 0.6B | ~1.5GB | 极轻量，中文效果好，可与 LLM 同卡运行 |
-| BGE-M3 | ~2.2GB | ~3GB | 中英双语强，MTEB 榜单前列 |
-| bge-large-zh-v1.5 | ~1.3GB | ~2GB | 纯中文优化 |
-
-### 部署
-
-```bash
-# 1. 下载模型
-pip install modelscope
-modelscope download --model Qwen/Qwen3-Embedding-0.6B --local_dir ./models/Qwen3-Embedding-0.6B
-
-# 2. vLLM 部署
-python -m vllm.entrypoints.openai.api_server \
-  --model ./models/Qwen3-Embedding-0.6B \
-  --api-key abc123 \
-  --served-model-name Qwen3-Embedding-0.6B \
-  --convert embed \
-  --gpu-memory-utilization 0.15 \
-  --max-model-len 2048 \
-  --port 7891
 ```
-
-### 配置
-
-```yaml
-embed:
-  model: "Qwen3-Embedding-0.6B"
-  api_key: "abc123"
-  base_url: "http://localhost:7891/v1"
-```
-
-### 验证
-
-```bash
-curl http://localhost:7891/v1/embeddings \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer abc123" \
-  -d '{"model": "Qwen3-Embedding-0.6B", "input": ["测试文本"]}'
-```
-
-### 本地 vs 云端
-
-| | DashScope 云端 | 本地 Qwen3-Embedding-0.6B |
-|---|---|---|
-| 延迟 | ~200-500ms | ~20-50ms |
-| 费用 | 按 token 收费 | 免费 |
-| batch 限制 | 10 条/次 | 无限制 |
-| 网络依赖 | 需联网 | 完全离线 |
-| 显存 | 0 | ~1.5GB |
-
----
-
-## 测试
-
-```bash
-# 全部测试
-pytest -v
-
-# 数据库测试
-pytest tests/test_database.py -v
-
-# Pipeline 测试（FPS / TrackManager / AgentInference / 并发压力）
-pytest tests/test_pipeline.py -v
+OCR-peddle/
+├── config.py                # 配置读取：config.yaml + 内置默认值
+├── config.yaml              # 全局配置文件
+├── build_db.py              # 批量建库脚本（图片 → 弦号+描述 → CSV）
+│
+├── database/
+│   └── __init__.py          # ShipDatabase：CSV + FAISS 向量库 + 自动变更检测
+│
+├── tools/
+│   └── __init__.py          # LangChain @tool：recognize / lookup / retrieve
+│
+├── agent/
+│   ├── __init__.py          # ShipHullAgent：ReAct Agent
+│   └── result.py            # AgentResult 数据结构
+│
+├── cli/
+│   └── __init__.py          # Rich CLI：单次查询 / 交互 REPL
+│
+├── pipeline/
+│   ├── __main__.py          # python -m pipeline 入口
+│   ├── cli.py               # 命令行参数解析
+│   ├── pipeline.py          # 主流水线编排（ShipPipeline）
+│   ├── detector.py          # YOLO 检测 + ByteTrack 跟踪
+│   ├── locator.py           # PaddleOCR TextDetection 弦号定位
+│   ├── agent_inference.py   # Qwen3 VLM 推理
+│   ├── tracker.py           # 跟踪状态管理（线程安全）
+│   ├── fps.py               # FPS 统计 + 延迟监控
+│   ├── video_input.py       # 视频/相机/视频流统一输入
+│   ├── demo.py              # Demo 可视化渲染
+│   └── output.py            # 截图保存
+│
+├── data/ships.csv           # 船只数据库
+├── tests/                   # 单元测试
+├── pyproject.toml           # 项目元数据 + 依赖
+└── requirements.txt         # 依赖清单
 ```
 
 ---
 
-## 技术栈
+## Tech Stack
 
-| 组件 | 技术 | 用途 |
-|------|------|------|
-| LLM 编排 | LangChain + LangGraph | ReAct Agent 模式 |
-| 向量库 | FAISS (faiss-cpu) | 语义检索索引 |
-| Embedding | OpenAI Embeddings API | 文本向量化 |
-| 视觉模型 | Qwen3.5 VLM | 船只图像弦号识别 |
-| 弦号定位 | PaddleOCR TextDetection | crop 内文字区域检测 |
-| 目标检测 | ultralytics YOLO | 船只检测 |
-| 跟踪 | ByteTrack (YOLO 内置) | 多目标跟踪 |
-| 视频处理 | OpenCV (cv2) | 视频读写、图像处理 |
-| 中文渲染 | PIL (Pillow) | Demo 可视化中文文字 |
-| 并发 | threading + queue.Queue | 级联/并发双模式 |
-| HTTP | httpx | API 调用 |
-| CLI | Rich | 终端美化输出 |
-| 测试 | pytest | 单元测试 + 并发压力测试 |
-
----
-
-## 开发指南
-
-### 换 LLM Provider
-
-任何兼容 OpenAI API 格式的服务：
-
-```yaml
-llm:
-  model: "gpt-4o"
-  api_key: "sk-xxx"
-  base_url: "https://api.openai.com/v1"
-```
-
-### 添加新工具
-
-在 `tools/__init__.py` 添加 `@tool` 函数，`build_tools()` 返回列表中加上即可。Agent 自动识别。
-
-### 数据变更后重建索引
-
-```bash
-# 方式一：设置自动重建
-VECTOR_STORE_AUTO_REBUILD=true ship-hull "触发重建"
-
-# 方式二：删除缓存目录
-rm -rf ./vector_store  # 下次启动自动重建
-```
+<table>
+<tr>
+<td><strong>LLM 编排</strong></td>
+<td>LangChain + LangGraph</td>
+<td>ReAct Agent 模式</td>
+</tr>
+<tr>
+<td><strong>向量库</strong></td>
+<td>FAISS (faiss-cpu)</td>
+<td>语义检索索引</td>
+</tr>
+<tr>
+<td><strong>视觉模型</strong></td>
+<td>Qwen3 VLM</td>
+<td>船只图像弦号识别</td>
+</tr>
+<tr>
+<td><strong>弦号定位</strong></td>
+<td>PaddleOCR TextDetection</td>
+<td>crop 内文字区域检测</td>
+</tr>
+<tr>
+<td><strong>目标检测</strong></td>
+<td>ultralytics YOLO</td>
+<td>船只检测</td>
+</tr>
+<tr>
+<td><strong>跟踪</strong></td>
+<td>ByteTrack (YOLO 内置)</td>
+<td>多目标跟踪</td>
+</tr>
+<tr>
+<td><strong>视频处理</strong></td>
+<td>OpenCV (cv2)</td>
+<td>视频读写、图像处理</td>
+</tr>
+<tr>
+<td><strong>并发</strong></td>
+<td>threading + queue.Queue</td>
+<td>级联/并发双模式</td>
+</tr>
+</table>
 
 ---
 
