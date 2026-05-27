@@ -131,8 +131,8 @@ hull_locator:
   input_shape: null             # 模型输入形状 (C, H, W)
 
   # ── 后处理阈值参数 ──
-  thresh: 0.3                   # 概率图阈值：得分 > 此值的像素视为文字
-  box_thresh: 0.6               # 框阈值：框内平均得分 > 此值才保留
+  thresh: 0.01                   # 概率图阈值：得分 > 此值的像素视为文字
+  box_thresh: 0.01               # 框阈值：框内平均得分 > 此值才保留
   unclip_ratio: 1.5             # 膨胀系数：Vatti clipping 扩张系数
 
   # ── 推理引擎参数 ──

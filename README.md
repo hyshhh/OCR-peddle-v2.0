@@ -361,8 +361,8 @@ hull_locator:
   input_shape: null              # (C, H, W)
 
   # 后处理阈值
-  thresh: 0.3                    # 概率图阈值
-  box_thresh: 0.6                # 框阈值
+  thresh: 0.01                   # 概率图阈值
+  box_thresh: 0.01               # 框阈值
   unclip_ratio: 1.5              # 膨胀系数
 
   # 推理引擎
