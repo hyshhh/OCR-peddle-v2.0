@@ -357,18 +357,24 @@ hull_locator:
   # 检测参数
   limit_side_len: 960            # 图像边长限制（像素）
   limit_type: "max"              # max / min
+  max_side_limit: null           # 最大边长硬限制
   input_shape: null              # (C, H, W)
 
-  # DB 参数
+  # 后处理阈值
   thresh: 0.3                    # 概率图阈值
   box_thresh: 0.6                # 框阈值
   unclip_ratio: 1.5              # 膨胀系数
 
   # 推理引擎
   device: null                   # null 自动 / "cpu" / "gpu"
-  enable_mkldnn: null
-  use_tensorrt: null
-  cpu_threads: null
+  engine: null                   # paddle_static / paddle_dynamic / transformers
+  engine_config: null
+  enable_hpi: false
+  precision: "fp32"              # fp32 / fp16
+  use_tensorrt: false
+  enable_mkldnn: true
+  mkldnn_cache_capacity: 10
+  cpu_threads: 10
 ```
 
 ---

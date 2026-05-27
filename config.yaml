@@ -110,6 +110,7 @@ pipeline:
 # ═══════════════════════════════════════════
 # 注：PaddleOCR 3.x 参数名去掉了 det_ 前缀，
 #     与 2.x 文档（det_db_thresh 等）不同。
+#     所有参数设为 null 时使用模型内置默认值。
 
 hull_locator:
   # 开关
@@ -123,18 +124,24 @@ hull_locator:
   model_name: null              # 模型名（null = 默认 PP-OCRv5_server_det）
   model_dir: null               # 本地模型目录（null = 自动下载）
 
-  # ── 通用检测参数（TextDetectionMixin） ──
+  # ── 通用检测参数 ──
   limit_side_len: 960           # 图像边长限制（像素）
   limit_type: "max"             # 边长限制类型：max（最长边 ≤ 此值）/ min（最短边 ≥ 此值）
-  input_shape: null             # 模型输入形状 (C, H, W)，null 使用默认
+  max_side_limit: null           # 最大边长硬限制（像素）
+  input_shape: null             # 模型输入形状 (C, H, W)
 
-  # ── DB 算法参数 ──
+  # ── 后处理阈值参数 ──
   thresh: 0.3                   # 概率图阈值：得分 > 此值的像素视为文字
   box_thresh: 0.6               # 框阈值：框内平均得分 > 此值才保留
   unclip_ratio: 1.5             # 膨胀系数：Vatti clipping 扩张系数
 
   # ── 推理引擎参数 ──
-  device: null                  # 推理设备：null 自动 / "cpu" / "gpu"
-  enable_mkldnn: null           # 启用 MKL-DNN（CPU 推理加速）
-  use_tensorrt: null            # 启用 TensorRT（GPU 推理加速）
-  cpu_threads: null             # CPU 线程数
+  device: null                  # 推理设备：null 自动 / "cpu" / "gpu" / "gpu:0"
+  engine: null                  # 推理引擎：null / paddle_static / paddle_dynamic / transformers
+  engine_config: null           # 推理引擎配置（dict）
+  enable_hpi: false             # 高性能推理
+  precision: "fp32"             # TensorRT 精度：fp32 / fp16
+  use_tensorrt: false           # 启用 TensorRT（GPU 加速）
+  enable_mkldnn: true           # 启用 MKL-DNN（CPU 加速）
+  mkldnn_cache_capacity: 10     # MKL-DNN 缓存容量
+  cpu_threads: 10               # CPU 线程数
