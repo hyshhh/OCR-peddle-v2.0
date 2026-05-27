@@ -140,12 +140,9 @@ class DemoRenderer:
         for det in detections:
             self._render_detection(canvas, det, tracks.get(det.track_id))
 
-            # 渲染弦号定位虚线框 + OCR 文字
+            # 渲染弦号定位虚线框
             if det.hull_number_boxes:
-                self._render_hull_number_boxes(
-                    canvas, det.hull_number_boxes,
-                    ocr_texts=det.ocr_texts,
-                )
+                self._render_hull_number_boxes(canvas, det.hull_number_boxes)
 
         # 渲染 HUD
         if self._show_fps and fps_info:
@@ -245,15 +242,14 @@ class DemoRenderer:
         self,
         canvas: np.ndarray,
         boxes: list[tuple[int, int, int, int]],
-        ocr_texts: list[str] | None = None,
     ) -> None:
-        """在帧上绘制弦号定位的虚线框（青色）+ OCR 文字。"""
+        """在帧上绘制弦号定位的虚线框（青色）。"""
         dash_len = 10
         gap_len = 6
         color = (255, 255, 0)  # 青色 (BGR)
         thickness = 2
 
-        for i, (x1, y1, x2, y2) in enumerate(boxes):
+        for (x1, y1, x2, y2) in boxes:
             # 四条边分别画虚线
             edges = [
                 ((x1, y1), (x2, y1)),  # 上
@@ -263,30 +259,6 @@ class DemoRenderer:
             ]
             for (sx, sy), (ex, ey) in edges:
                 self._draw_dashed_line(canvas, sx, sy, ex, ey, color, thickness, dash_len, gap_len)
-
-            # 在虚线框上方显示 OCR 文字
-            if ocr_texts and i < len(ocr_texts) and ocr_texts[i]:
-                text = ocr_texts[i]
-                # 文字背景
-                pil_img = Image.fromarray(np.zeros((1, 1, 3), dtype=np.uint8))
-                draw = ImageDraw.Draw(pil_img)
-                bbox = draw.textbbox((0, 0), text, font=self._cjk_font)
-                tw = bbox[2] - bbox[0]
-                th = bbox[3] - bbox[1]
-
-                # 文字位置：框上方
-                tx = x1
-                ty = y1 - th - 6
-                if ty < 0:
-                    ty = y2 + 2  # 放到框下方
-
-                cv2.rectangle(canvas, (tx, ty), (tx + tw + 4, ty + th + 4), color, -1)
-                _pil_put_text(
-                    canvas, text,
-                    tx + 2, ty + 2,
-                    self._cjk_font,
-                    fill=(0, 0, 0),
-                )
 
     @staticmethod
     def _draw_dashed_line(

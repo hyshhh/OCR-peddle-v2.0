@@ -106,26 +106,28 @@ pipeline:
   # 超过此帧数未出现的 track 被清理
   max_stale_frames: 30
 # ═══════════════════════════════════════════
-# 弦号定位（PaddleOCR PaddleOCR 3.5）
+# 弦号定位（PaddleOCR TextDetection 3.5）
 # ═══════════════════════════════════════════
-# 注：PaddleOCR 3.x 使用 PaddleOCR 统一接口，
-#     同时完成检测 + 识别，输出文字和坐标。
+# 注：PaddleOCR 3.x 参数名去掉了 det_ 前缀，
+#     与 2.x 文档（det_db_thresh 等）不同。
+#     所有参数设为 null 时使用模型内置默认值。
 
 hull_locator:
   # 开关
   enabled: true
 
   # ── 后处理过滤（我们自己的参数） ──
-  score_threshold: 0.0          # OCR 识别置信度阈值（模型返回后过滤）
+  score_threshold: 0.0          # 文字检测置信度阈值（模型返回后过滤）
   min_area: 0                   # 最小文字区域面积（像素²），过滤噪声
 
-  # ── PaddleOCR 功能开关 ──
-  use_doc_orientation_classify: false  # 文档方向分类（0°/90°/180°/270°）
-  use_doc_unwarping: true       # 文档矫正（UVDoc，开启会增加推理耗时）
-  use_textline_orientation: true  # 文字行方向校准（0°/180°）
+  # ── UVDoc 文字矫正（可选预处理） ──
+  unwarp_enabled: true          # 是否启用 UVDoc 矫正（开启会增加推理耗时）
+  unwarp_model_name: null       # 模型名（null = 默认 UVDoc）
+  unwarp_model_dir: null        # 本地模型目录
+  unwarp_device: null           # 推理设备
 
   # ── Crop 保存（调试用） ──
-  save_crops: true              # 是否保存 crop
+  save_crops: true              # 是否保存矫正前后的 crop
   crop_save_dir: "./crops"      # crop 保存目录
   crop_save_interval: 10        # 保存间隔（秒）
 
@@ -146,7 +148,7 @@ hull_locator:
 
   # ── 推理引擎参数 ──
   device: null                  # 推理设备：null 自动 / "cpu" / "gpu" / "gpu:0"
-  engine: "paddle"              # 推理引擎：paddle / paddle_static / paddle_dynamic / transformers
+  engine: null                  # 推理引擎：null / paddle_static / paddle_dynamic / transformers
   engine_config: null           # 推理引擎配置（dict）
   enable_hpi: false             # 高性能推理
   precision: "fp32"             # TensorRT 精度：fp32 / fp16

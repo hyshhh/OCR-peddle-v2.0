@@ -30,7 +30,6 @@ class Detection:
     crop_raw: np.ndarray | None = None  # 原始未 resize 的 crop（给 PaddleOCR 用）
     crop_offset: tuple[int, int] = (0, 0)  # crop 在原始帧中的偏移 (offset_x, offset_y)
     hull_number_boxes: list[tuple[int, int, int, int]] | None = None  # 弦号定位框（帧坐标）
-    ocr_texts: list[str] | None = None  # 每个定位框对应的 OCR 文字
 
 
 def _build_tracker_yaml(

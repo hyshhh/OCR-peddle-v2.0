@@ -1,8 +1,10 @@
 """
-HullNumberLocator — 基于 PaddleOCR PaddleOCR 的弦号定位
+HullNumberLocator — 基于 PaddleOCR TextDetection 的弦号定位
 
-流程：crop → PaddleOCR(检测+识别) → 返回文字区域+OCR文本
-支持保存各阶段 crop 用于调试。
+在 YOLO crop 上运行文字检测，返回检测到的文字区域框（已转换为原始帧坐标）。
+
+可选 UVDoc 文字矫正预处理：crop → UVDoc 矫正 → TextDetection 检测。
+支持保存矫正前后的 crop 图像用于调试。
 """
 
 from __future__ import annotations
@@ -17,11 +19,11 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# 我们自己的参数（不传给 PaddleOCR）
+# 我们自己的参数（从 config 中提取后不传给 PaddleOCR）
 _OWN_KEYS = frozenset({
     "enabled", "score_threshold", "min_area",
+    "unwarp_enabled", "unwarp_model_name", "unwarp_model_dir", "unwarp_device",
     "save_crops", "crop_save_dir", "crop_save_interval",
-    "use_doc_orientation_classify", "use_doc_unwarping", "use_textline_orientation",
 })
 
 
@@ -30,40 +32,42 @@ class TextRegion:
     """单个文字检测区域。"""
     bbox_frame: tuple[int, int, int, int]  # (x1, y1, x2, y2) 在原始帧中的坐标
     confidence: float = 0.0
-    polygon: np.ndarray | None = None
-    ocr_text: str = ""  # OCR 识别到的文字
+    polygon: np.ndarray | None = None      # 原始多边形点（帧坐标）
 
 
 class HullNumberLocator:
     """
-    弦号定位器 — PaddleOCR 三步流水线。
+    弦号定位器 — PaddleOCR TextDetection 检测文字区域。
 
-    流程：
-    1. crop → PaddleOCR（检测 + 识别）
-    2. 返回文字区域坐标 + OCR 文本
+    流程（可选 UVDoc 矫正）：
+    1. crop → UVDoc 矫正（若启用）→ TextDetection 检测
+    2. 后处理过滤（score_threshold / min_area）
+    3. 坐标转换：crop 坐标 → 原始帧坐标
     """
 
     def __init__(self, locator_cfg: dict):
         self._score_threshold: float = locator_cfg.get("score_threshold", 0.5)
         self._min_area: int = locator_cfg.get("min_area", 100)
 
-        # Crop 保存
+        # UVDoc 矫正配置
+        self._unwarp_enabled: bool = bool(locator_cfg.get("unwarp_enabled", False))
+        self._unwarp_model_name: str | None = locator_cfg.get("unwarp_model_name")
+        self._unwarp_model_dir: str | None = locator_cfg.get("unwarp_model_dir")
+        self._unwarp_device: str | None = locator_cfg.get("unwarp_device")
+
+        # Crop 保存配置
         self._save_crops: bool = bool(locator_cfg.get("save_crops", False))
         self._crop_save_dir: str = locator_cfg.get("crop_save_dir", "./crops")
         self._crop_save_interval: float = locator_cfg.get("crop_save_interval", 10)
         self._last_crop_save: float = 0.0
 
-        # PaddleOCR 功能开关（用于判断是否需要单独跑矫正保存）
-        self._use_doc_unwarping: bool = bool(locator_cfg.get("use_doc_unwarping", False))
-        self._use_textline_orientation: bool = bool(locator_cfg.get("use_textline_orientation", False))
-
-        # PaddleOCR 参数（过滤掉我们自己的参数）
+        # TextDetection 参数（去掉所有我们自己的 key）
         self._paddle_kwargs: dict = {
             k: v for k, v in locator_cfg.items()
             if k not in _OWN_KEYS and v is not None
         }
 
-        self._ocr_model = None
+        self._det_model = None
         self._unwarp_model = None
         self._initialized = False
 
@@ -72,35 +76,27 @@ class HullNumberLocator:
             return
 
         try:
-            from paddleocr import PaddleOCR
+            from paddleocr import TextDetection
 
-            # PaddleOCR 默认关闭文档预处理，由我们自己的参数控制
-            kwargs = {
-                "use_doc_orientation_classify": bool(
-                    self._paddle_kwargs.pop("use_doc_orientation_classify", False)
-                ),
-                "use_doc_unwarping": bool(
-                    self._paddle_kwargs.pop("use_doc_unwarping", False)
-                ),
-                "use_textline_orientation": bool(
-                    self._paddle_kwargs.pop("use_textline_orientation", False)
-                ),
-                "engine": self._paddle_kwargs.pop("engine", "paddle"),
-            }
-            # 合并剩余的 paddle 参数（limit_side_len, thresh 等）
-            kwargs.update(self._paddle_kwargs)
+            logger.info("TextDetection 参数: %s", self._paddle_kwargs)
+            self._det_model = TextDetection(**self._paddle_kwargs)
 
-            logger.info("PaddleOCR 参数: %s", kwargs)
-            self._ocr_model = PaddleOCR(**kwargs)
-
-            # 如果开启了矫正且需要保存 crop，单独加载 TextImageUnwarping 用于获取矫正后的图
-            if self._use_doc_unwarping and self._save_crops:
+            if self._unwarp_enabled:
                 from paddleocr import TextImageUnwarping
-                self._unwarp_model = TextImageUnwarping()
-                logger.info("TextImageUnwarping 加载成功（用于 crop 保存）")
+                unwarp_kwargs = {}
+                if self._unwarp_model_name:
+                    unwarp_kwargs["model_name"] = self._unwarp_model_name
+                if self._unwarp_model_dir:
+                    unwarp_kwargs["model_dir"] = self._unwarp_model_dir
+                if self._unwarp_device:
+                    unwarp_kwargs["device"] = self._unwarp_device
+                self._unwarp_model = TextImageUnwarping(**unwarp_kwargs)
+                logger.info("UVDoc 矫正模型加载成功")
 
             self._initialized = True
-            logger.info("定位流水线初始化完成: save_crops=%s", self._save_crops)
+            logger.info("后处理: score_threshold=%.3f, min_area=%d, unwarp=%s, save_crops=%s",
+                        self._score_threshold, self._min_area,
+                        self._unwarp_enabled, self._save_crops)
         except ImportError:
             logger.error(
                 "PaddleOCR 未安装。请安装: pip install paddleocr>=3.5 paddlepaddle-gpu>=3.3"
@@ -110,8 +106,29 @@ class HullNumberLocator:
             logger.error("PaddleOCR 模型加载失败: %s", e)
             raise
 
-    def _maybe_save_crops(self, crop_raw: np.ndarray, track_id: int) -> None:
-        """每隔 crop_save_interval 秒保存 crop（矫正前）。"""
+    def _unwarp_crop(self, crop: np.ndarray) -> np.ndarray:
+        """UVDoc 矫正：BGR → RGB → 矫正 → BGR。"""
+        try:
+            rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+            output = self._unwarp_model.predict(rgb)
+            result = output[0]
+            if isinstance(result, dict):
+                corrected = result.get("doctr_img", result.get("res", None))
+            else:
+                corrected = getattr(result, "doctr_img", None)
+            if corrected is not None:
+                if isinstance(corrected, np.ndarray):
+                    if corrected.ndim == 3 and corrected.shape[2] == 3:
+                        return cv2.cvtColor(corrected, cv2.COLOR_RGB2BGR)
+                    return corrected
+            logger.debug("UVDoc 返回空结果，使用原图")
+            return crop
+        except Exception as e:
+            logger.warning("UVDoc 矫正异常，使用原图: %s", e)
+            return crop
+
+    def _maybe_save_crops(self, crop_raw: np.ndarray, crop_unwarped: np.ndarray, track_id: int) -> None:
+        """每隔 crop_save_interval 秒保存矫正前后的 crop。"""
         if not self._save_crops:
             return
 
@@ -123,41 +140,14 @@ class HullNumberLocator:
         try:
             save_dir = Path(self._crop_save_dir)
             save_dir.mkdir(parents=True, exist_ok=True)
+
             ts = int(time.time())
             prefix = save_dir / f"track{track_id}_{ts}"
-
             cv2.imwrite(str(prefix) + "_before.jpg", crop_raw)
-            logger.info("Crop 已保存: %s_before.jpg", prefix)
+            cv2.imwrite(str(prefix) + "_after.jpg", crop_unwarped)
+            logger.info("Crop 已保存: %s_before.jpg / %s_after.jpg", prefix, prefix)
         except Exception as e:
             logger.warning("保存 crop 失败: %s", e)
-
-    def _maybe_save_after_crop(self, crop_raw: np.ndarray, track_id: int) -> None:
-        """保存矫正后的 crop（每隔 crop_save_interval 秒）。"""
-        if not self._save_crops or self._unwarp_model is None:
-            return
-
-        try:
-            rgb = cv2.cvtColor(crop_raw, cv2.COLOR_BGR2RGB)
-            output = self._unwarp_model.predict(rgb)
-            result = output[0]
-            if isinstance(result, dict):
-                corrected = result.get("doctr_img", result.get("res", None))
-            else:
-                corrected = getattr(result, "doctr_img", None)
-
-            if corrected is not None and isinstance(corrected, np.ndarray):
-                if corrected.ndim == 3 and corrected.shape[2] == 3:
-                    corrected = cv2.cvtColor(corrected, cv2.COLOR_RGB2BGR)
-
-                save_dir = Path(self._crop_save_dir)
-                save_dir.mkdir(parents=True, exist_ok=True)
-                ts = int(time.time())
-                prefix = save_dir / f"track{track_id}_{ts}"
-
-                cv2.imwrite(str(prefix) + "_after.jpg", corrected)
-                logger.info("Crop 已保存: %s_after.jpg", prefix)
-        except Exception as e:
-            logger.warning("保存矫正后 crop 失败: %s", e)
 
     def locate(
         self,
@@ -172,31 +162,26 @@ class HullNumberLocator:
             return []
 
         try:
-            # 保存原始 crop（矫正前）
-            self._maybe_save_crops(crop, track_id)
+            # UVDoc 矫正（可选）
+            if self._unwarp_enabled:
+                det_input = self._unwarp_crop(crop)
+                self._maybe_save_crops(crop, det_input, track_id)
+            else:
+                det_input = crop
 
-            # PaddleOCR 检测 + 识别
-            output = self._ocr_model.predict(crop)
-
-            # 保存矫正后的 crop（如果开启了 UVDoc 矫正）
-            if self._use_doc_unwarping and self._unwarp_model is not None:
-                self._maybe_save_after_crop(crop, track_id)
+            output = self._det_model.predict(det_input)
 
             regions: list[TextRegion] = []
 
             for res in output:
-                if not isinstance(res, dict):
+                if isinstance(res, dict):
+                    boxes = res.get('dt_polys', None)
+                    scores = res.get('dt_scores', None)
+                elif hasattr(res, 'dt_polys'):
+                    boxes = res.dt_polys
+                    scores = getattr(res, 'dt_scores', None)
+                else:
                     continue
-
-                # 提取检测结果
-                rec_texts = res.get("rec_texts", [])
-                rec_scores = res.get("rec_scores", [])
-                rec_polys = res.get("rec_polys", None)
-                dt_polys = res.get("dt_polys", None)
-
-                # 使用 rec_polys（识别结果对应的多边形）作为主要框
-                # 如果没有 rec_polys 则用 dt_polys
-                boxes = rec_polys if rec_polys is not None else dt_polys
 
                 if boxes is None:
                     continue
@@ -204,24 +189,23 @@ class HullNumberLocator:
                 for idx, box in enumerate(boxes):
                     box_array = np.array(box, dtype=np.int32)
 
-                    # 获取置信度
                     score = 0.0
-                    if rec_scores is not None and idx < len(rec_scores):
-                        score = float(rec_scores[idx])
+                    if scores is not None and idx < len(scores):
+                        score = float(scores[idx])
 
-                    # 获取 OCR 文字
-                    ocr_text = ""
-                    if rec_texts is not None and idx < len(rec_texts):
-                        ocr_text = str(rec_texts[idx])
-
-                    # 置信度过滤
                     if score < self._score_threshold:
                         continue
 
-                    # 面积过滤
                     area = cv2.contourArea(box_array)
                     if area < self._min_area:
                         continue
+
+                    # UVDoc 矫正后图像尺寸可能变化，需要缩放坐标回原始 crop
+                    if self._unwarp_enabled and det_input.shape[:2] != crop.shape[:2]:
+                        h_scale = crop.shape[1] / det_input.shape[1]
+                        v_scale = crop.shape[0] / det_input.shape[0]
+                        box_array[:, 0] = (box_array[:, 0] * h_scale).astype(np.int32)
+                        box_array[:, 1] = (box_array[:, 1] * v_scale).astype(np.int32)
 
                     # 坐标转换：crop 坐标 → 帧坐标
                     box_frame = box_array.copy()
@@ -239,7 +223,6 @@ class HullNumberLocator:
                         bbox_frame=(x1, y1, x2, y2),
                         confidence=score,
                         polygon=box_frame,
-                        ocr_text=ocr_text,
                     ))
 
             return regions
@@ -249,5 +232,6 @@ class HullNumberLocator:
             return []
 
     def cleanup(self) -> None:
-        self._ocr_model = None
+        self._det_model = None
+        self._unwarp_model = None
         self._initialized = False
