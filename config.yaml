@@ -125,7 +125,3 @@ hull_locator:
   text_det_unclip_ratio: 1.5
   # 输入图像最大边长限制（像素）
   text_det_max_side_limit: 960
-  # 是否使用膨胀操作
-  use_dilation: true
-  # 评分模式："fast" 或 "slow"
-  det_db_score_mode: "fast"

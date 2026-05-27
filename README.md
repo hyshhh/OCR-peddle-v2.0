@@ -105,7 +105,37 @@ pip install -e .
 pip install -e ".[dev]"
 ```
 
-### 2. Start VLM Service
+### 2. Install PaddleOCR (Optional, for Hull Number Location)
+
+```bash
+# 创建独立环境（推荐）
+conda create -n paddle python=3.10 -y
+conda activate paddle
+
+# 安装 PaddlePaddle GPU（CUDA 12）
+pip install paddlepaddle-gpu==3.3.1 -i https://www.paddlepaddle.org.cn/packages/stable/cu12/
+
+# 安装 PaddleOCR 3.5
+pip install paddleocr==3.5.0
+```
+
+> 若无需 GPU，可跳过 `paddlepaddle-gpu`，PaddleOCR 会自动安装 CPU 版本。
+
+**验证安装**
+
+```python
+from paddleocr import TextDetection
+model = TextDetection()
+print("PaddleOCR 安装成功")
+```
+
+**注意事项**
+
+- PaddleOCR 3.5 需要 Python 3.10+
+- GPU 版本需要 CUDA 12.x + cuDNN 9.x+
+- 首次运行会自动下载检测模型（约 10MB）
+
+### 3. Start VLM Service
 
 使用 vLLM 部署 Qwen3 VLM（兼容 OpenAI API 格式）：
 
@@ -121,7 +151,7 @@ CUDA_VISIBLE_DEVICES=0 vllm serve /path/to/Qwen3-VL-4B-AWQ \
   --tool-call-parser qwen3_xml
 ```
 
-### 3. Start Embedding Service (Optional, for RAG)
+### 4. Start Embedding Service (Optional, for RAG)
 
 ```bash
 CUDA_VISIBLE_DEVICES=1 python -m vllm.entrypoints.openai.api_server \
@@ -327,8 +357,6 @@ hull_locator:
   text_det_box_thresh: 0.5        # 框级阈值：候选框平均分数低于此值被过滤
   text_det_unclip_ratio: 1.5      # 膨胀系数：值越大检测框越大
   text_det_max_side_limit: 960    # 输入图像最大边长（像素）
-  use_dilation: true              # 是否使用膨胀操作
-  det_db_score_mode: "fast"       # 评分模式：fast / slow
 ```
 
 ---

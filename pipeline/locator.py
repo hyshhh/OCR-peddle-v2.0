@@ -41,8 +41,6 @@ class HullNumberLocator:
         text_det_box_thresh: float = 0.5,
         text_det_unclip_ratio: float = 1.5,
         text_det_max_side_limit: int = 960,
-        use_dilation: bool = True,
-        det_db_score_mode: str = "fast",
     ):
         """
         Args:
@@ -52,8 +50,6 @@ class HullNumberLocator:
             text_det_box_thresh: 检测框阈值，候选框平均分数低于此值被过滤。
             text_det_unclip_ratio: 膨胀系数，扩大检测框区域。
             text_det_max_side_limit: 输入图像最大边长限制（像素）。
-            use_dilation: 是否使用膨胀操作。
-            det_db_score_mode: 评分模式，"fast" 或 "slow"。
         """
         self._score_threshold = score_threshold
         self._min_area = min_area
@@ -61,8 +57,6 @@ class HullNumberLocator:
         self._text_det_box_thresh = text_det_box_thresh
         self._text_det_unclip_ratio = text_det_unclip_ratio
         self._text_det_max_side_limit = text_det_max_side_limit
-        self._use_dilation = use_dilation
-        self._det_db_score_mode = det_db_score_mode
         self._model = None
         self._initialized = False
 
@@ -78,8 +72,6 @@ class HullNumberLocator:
                 text_det_box_thresh=self._text_det_box_thresh,
                 text_det_unclip_ratio=self._text_det_unclip_ratio,
                 text_det_max_side_limit=self._text_det_max_side_limit,
-                use_dilation=self._use_dilation,
-                det_db_score_mode=self._det_db_score_mode,
             )
             self._initialized = True
             logger.info(

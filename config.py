@@ -68,8 +68,6 @@ _DEFAULTS: dict[str, Any] = {
         "text_det_box_thresh": 0.5,
         "text_det_unclip_ratio": 1.5,
         "text_det_max_side_limit": 960,
-        "use_dilation": True,
-        "det_db_score_mode": "fast",
     },
     "app": {
         "log_level": "INFO",
