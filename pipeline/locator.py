@@ -120,8 +120,8 @@ class HullNumberLocator:
         if hasattr(self._det_model, "names"):
             logger.info("YOLO 模型类别: %s", self._det_model.names)
 
-    def _maybe_save_crops(self, crop: np.ndarray, track_id: int) -> None:
-        """每隔 crop_save_interval 秒保存 crop。"""
+    def _maybe_save_crops(self, crop_raw: np.ndarray, crop_processed: np.ndarray, track_id: int) -> None:
+        """每隔 crop_save_interval 秒保存预处理前后的 crop。"""
         if not self._save_crops:
             return
 
@@ -136,8 +136,9 @@ class HullNumberLocator:
 
             ts = int(time.time())
             prefix = save_dir / f"track{track_id}_{ts}"
-            cv2.imwrite(str(prefix) + "_crop.jpg", crop)
-            logger.info("Crop 已保存: %s_crop.jpg", prefix)
+            cv2.imwrite(str(prefix) + "_before.jpg", crop_raw)
+            cv2.imwrite(str(prefix) + "_after.jpg", crop_processed)
+            logger.info("Crop 已保存: %s_before.jpg / %s_after.jpg", prefix, prefix)
         except Exception as e:
             logger.warning("保存 crop 失败: %s", e)
 
@@ -154,14 +155,14 @@ class HullNumberLocator:
             return []
 
         try:
-            # 保存 crop（调试用）
-            self._maybe_save_crops(crop, track_id)
-
             # 图像预处理（小波去噪、卷积锐化等）
             det_input = crop
             if self._preprocess_pipeline:
                 from pipeline.image_processing import apply_pipeline
                 det_input = apply_pipeline(det_input, self._preprocess_pipeline)
+
+            # 保存预处理前后的 crop（调试用）
+            self._maybe_save_crops(crop, det_input, track_id)
 
             # 检测器推理
             if self._detector_type == "yolo":
