@@ -48,6 +48,8 @@ _DEFAULTS: dict[str, Any] = {
         "yolo_model": "yolov8n.pt",
         "device": "",
         "conf_threshold": 0.25,
+        "crop_min_size": 512,
+        "crop_max_size": 1024,
         "detect_every_n_frames": 1,
         "tracker": "bytetrack",
         "tracker_params": {
