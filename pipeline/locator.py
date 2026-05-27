@@ -113,17 +113,19 @@ class HullNumberLocator:
                 boxes = None
                 scores = None
 
-                # 兼容不同版本的返回格式
-                if hasattr(res, 'dt_polys'):
+                # TextDetResult 继承自 dict，用字典式访问
+                if isinstance(res, dict):
+                    boxes = res.get('dt_polys', None)
+                    scores = res.get('dt_scores', None)
+                elif hasattr(res, 'dt_polys'):
                     boxes = res.dt_polys
                     scores = getattr(res, 'dt_scores', None)
-                elif isinstance(res, dict):
-                    boxes = res.get('dt_polys', res.get('boxes', None))
-                    scores = res.get('dt_scores', res.get('scores', None))
-                elif hasattr(res, '__dict__'):
-                    obj_dict = res.__dict__
-                    boxes = obj_dict.get('dt_polys', obj_dict.get('boxes', None))
-                    scores = obj_dict.get('dt_scores', obj_dict.get('scores', None))
+                else:
+                    continue
+
+                logger.debug("dt_polys 数量: %s, dt_scores: %s",
+                             len(boxes) if boxes is not None else 0,
+                             scores[:3] if scores else None)
 
                 if boxes is None:
                     continue
