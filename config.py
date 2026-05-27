@@ -64,6 +64,7 @@ _DEFAULTS: dict[str, Any] = {
     },
     "hull_locator": {
         "enabled": False,
+        "detector_type": "paddle",
         "score_threshold": 0.5,
         "min_area": 100,
         "unwarp_enabled": True,
@@ -92,6 +93,13 @@ _DEFAULTS: dict[str, Any] = {
         "enable_mkldnn": True,
         "mkldnn_cache_capacity": 10,
         "cpu_threads": 10,
+        "yolo_model": "best.pt",
+        "yolo_model_name": None,
+        "yolo_conf": 0.25,
+        "yolo_iou": 0.45,
+        "yolo_imgsz": 640,
+        "yolo_device": "",
+        "yolo_classes": None,
     },
     "app": {
         "log_level": "INFO",
