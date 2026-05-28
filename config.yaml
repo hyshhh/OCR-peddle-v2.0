@@ -136,15 +136,15 @@ hull_locator:
   #           gamma_correction, contrast_stretching, retinex,
   #           edge_enhance, tophat,
   #           shadow_adjust, exposure_adjust, contrast_adjust
-  preprocess_steps: []
-  # 预处理示例：
-  # preprocess_steps:
-  #   - name: "wavelet_denoise"
-  #     params: { level: 1, threshold: 10.0 }
-  #   - name: "convolution_sharpen"
-  #     params: { strength: 1.5 }
-  #   - name: "clahe_enhance"
-  #     params: { clip_limit: 2.0, grid_size: 8 }
+  preprocess_steps:
+    - name: "shadow_adjust"
+      params: { shadow_amount: 50 }
+    - name: "wavelet_denoise"
+      params: { level: 1, threshold: 12.0 }
+    - name: "convolution_sharpen"
+      params: { strength: 2.0, kernel_size: 7 }
+    - name: "edge_enhance"
+    - name: "retinex"
 
   # ═══════════════════════════════════════════
   # PaddleOCR 检测器参数（detector_type: "paddle" 时生效）
