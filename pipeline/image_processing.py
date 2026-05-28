@@ -80,34 +80,24 @@ def convolution_sharpen(
     """
     卷积锐化。
 
-    使用拉普拉斯算子或自定义锐化核增强边缘。
+    使用 Unsharp Mask 原理：先模糊再与原图做差，增强边缘。
+    核心公式：输出 = 原图 + strength × (原图 - 模糊图)
 
     Args:
         crop: BGR 图像。
-        strength: 锐化强度（1.0=不锐化，越大越锐）。
-        kernel_size: 核大小（3 或 5）。
+        strength: 锐化强度（0=不锐化，1.0=标准锐化，越大越锐）。
+        kernel_size: 高斯模糊核大小（必须为奇数）。
     """
-    if kernel_size == 5:
-        kernel = np.array([
-            [-1, -1, -1, -1, -1],
-            [-1, -1, -1, -1, -1],
-            [-1, -1, 24, -1, -1],
-            [-1, -1, -1, -1, -1],
-            [-1, -1, -1, -1, -1],
-        ], dtype=np.float64)
-    else:
-        # 3x3 锐化核：中心增强
-        kernel = np.array([
-            [0, -1, 0],
-            [-1, 5, -1],
-            [0, -1, 0],
-        ], dtype=np.float64)
+    if kernel_size % 2 == 0:
+        kernel_size += 1
 
-    # 按 strength 缩放
-    center = kernel_size * kernel_size // 2
-    kernel[center // kernel_size, center % kernel_size] = 1 + (kernel[center // kernel_size, center % kernel_size] - 1) * strength
+    # 高斯模糊
+    blurred = cv2.GaussianBlur(crop, (kernel_size, kernel_size), 0)
 
-    sharpened = cv2.filter2D(crop, -1, kernel)
+    # Unsharp Mask：输出 = 原图 + strength × (原图 - 模糊图)
+    # = (1 + strength) × 原图 - strength × 模糊图
+    sharpened = cv2.addWeighted(crop, 1.0 + strength, blurred, -strength, 0)
+
     return np.clip(sharpened, 0, 255).astype(np.uint8)
 
 
