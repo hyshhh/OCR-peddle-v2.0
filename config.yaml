@@ -134,7 +134,8 @@ hull_locator:
   #           gaussian_blur, median_blur, bilateral_denoise,
   #           unsharp_mask, grayscale, adaptive_threshold,
   #           gamma_correction, contrast_stretching, retinex,
-  #           edge_enhance, tophat
+  #           edge_enhance, tophat,
+  #           shadow_adjust, exposure_adjust, contrast_adjust
   preprocess_steps: []
   # 预处理示例：
   # preprocess_steps:

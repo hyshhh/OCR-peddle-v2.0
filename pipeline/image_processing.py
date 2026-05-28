@@ -344,6 +344,80 @@ def tophat_enhance(crop: np.ndarray, kernel_size: int = 15) -> np.ndarray:
         return cv2.add(crop, tophat)
 
 
+def shadow_adjust(crop: np.ndarray, shadow_amount: float = 50.0) -> np.ndarray:
+    """
+    阴影调节 — 提亮暗区，保留亮区。
+
+    使用 LAB 色彩空间，只调整 L 通道的暗区部分。
+
+    Args:
+        crop: BGR 图像。
+        shadow_amount: 提亮程度 (0-100)。0=不调整，100=最大程度提亮。
+    """
+    lab = cv2.cvtColor(crop, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+
+    # 归一化到 [0, 1]
+    l_norm = l.astype(np.float64) / 255.0
+
+    # 只提亮暗区（像素值 < 0.5 的部分）
+    # 使用 sigmoid 曲线：暗区提亮多，亮区几乎不变
+    shadow_factor = shadow_amount / 100.0
+    # 对暗区应用提亮：越暗提亮越多
+    mask = np.clip(1.0 - l_norm, 0, 1)  # 暗区 mask 值大
+    adjustment = mask * shadow_factor * 0.5  # 最大提亮 0.5（约 128 级）
+    l_enhanced = np.clip(l_norm + adjustment, 0, 1)
+
+    l_result = (l_enhanced * 255).astype(np.uint8)
+    enhanced = cv2.merge([l_result, a, b])
+    return cv2.cvtColor(enhanced, cv2.COLOR_LAB2BGR)
+
+
+def exposure_adjust(crop: np.ndarray, exposure: float = 0.0) -> np.ndarray:
+    """
+    曝光调节 — 整体亮度调整。
+
+    Args:
+        crop: BGR 图像。
+        exposure: 曝光值 (-100 到 100)。
+                  负值变暗，正值变亮，0=不变。
+    """
+    # 将 -100~100 映射到实际调整值
+    # 100 对应 +1.0（最大提亮），-100 对应 -1.0（最大变暗）
+    factor = exposure / 100.0
+
+    if factor >= 0:
+        # 提亮：向 255 靠近
+        result = crop.astype(np.float64) + (255 - crop.astype(np.float64)) * factor
+    else:
+        # 变暗：向 0 靠近
+        result = crop.astype(np.float64) * (1 + factor)
+
+    return np.clip(result, 0, 255).astype(np.uint8)
+
+
+def contrast_adjust(crop: np.ndarray, contrast: float = 0.0) -> np.ndarray:
+    """
+    对比度调节 — 线性对比度调整。
+
+    Args:
+        crop: BGR 图像。
+        contrast: 对比度值 (-100 到 100)。
+                  负值降低对比度，正值增强对比度，0=不变。
+    """
+    # 将 -100~100 映射到系数
+    # 100 -> 系数 2.0（对比度翻倍），-100 -> 系数 0.0（全灰）
+    factor = (contrast + 100) / 100.0
+
+    # 计算均值
+    mean = np.mean(crop)
+
+    # 线性对比度调整：output = mean + factor * (input - mean)
+    result = mean + factor * (crop.astype(np.float64) - mean)
+
+    return np.clip(result, 0, 255).astype(np.uint8)
+
+
 # ── 算法注册表 ──────────────────────────────────
 
 ALGORITHMS: dict[str, callable] = {
@@ -361,6 +435,9 @@ ALGORITHMS: dict[str, callable] = {
     "retinex": retinex_enhance,
     "edge_enhance": edge_enhance,
     "tophat": tophat_enhance,
+    "shadow_adjust": shadow_adjust,
+    "exposure_adjust": exposure_adjust,
+    "contrast_adjust": contrast_adjust,
 }
 
 
