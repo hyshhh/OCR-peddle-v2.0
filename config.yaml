@@ -132,7 +132,9 @@ hull_locator:
   # 按顺序执行，留空则不做预处理
   # 可选算法：wavelet_denoise, convolution_sharpen, clahe_enhance,
   #           gaussian_blur, median_blur, bilateral_denoise,
-  #           unsharp_mask, grayscale, adaptive_threshold
+  #           unsharp_mask, grayscale, adaptive_threshold,
+  #           gamma_correction, contrast_stretching, retinex,
+  #           edge_enhance, tophat
   preprocess_steps: []
   # 预处理示例：
   # preprocess_steps:

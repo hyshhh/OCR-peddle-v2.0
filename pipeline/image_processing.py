@@ -226,6 +226,124 @@ def adaptive_threshold(crop: np.ndarray, block_size: int = 11, c: int = 2) -> np
     return cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR)
 
 
+def gamma_correction(crop: np.ndarray, gamma: float = 1.0) -> np.ndarray:
+    """
+    Gamma 校正（亮度调整）。
+
+    gamma < 1: 变亮（暗区细节增强）
+    gamma > 1: 变暗（亮区细节增强）
+    gamma = 1: 不变
+
+    Args:
+        crop: BGR 图像。
+        gamma: Gamma 值。
+    """
+    inv_gamma = 1.0 / gamma
+    table = np.array([
+        ((i / 255.0) ** inv_gamma) * 255 for i in range(256)
+    ]).astype(np.uint8)
+    return cv2.LUT(crop, table)
+
+
+def contrast_stretching(crop: np.ndarray, low_percent: float = 2.0, high_percent: float = 98.0) -> np.ndarray:
+    """
+    对比度拉伸（线性归一化）。
+
+    将像素值从 [low, high] 拉伸到 [0, 255]。
+
+    Args:
+        crop: BGR 图像。
+        low_percent: 低百分位（截断下限）。
+        high_percent: 高百分位（截断上限）。
+    """
+    if crop.ndim == 3:
+        # 逐通道处理
+        result = crop.copy()
+        for c in range(3):
+            channel = crop[:, :, c]
+            low = np.percentile(channel, low_percent)
+            high = np.percentile(channel, high_percent)
+            if high - low < 1:
+                continue
+            result[:, :, c] = np.clip(
+                (channel - low) / (high - low) * 255, 0, 255
+            ).astype(np.uint8)
+        return result
+    else:
+        low = np.percentile(crop, low_percent)
+        high = np.percentile(crop, high_percent)
+        if high - low < 1:
+            return crop
+        return np.clip(
+            (crop - low) / (high - low) * 255, 0, 255
+        ).astype(np.uint8)
+
+
+def retinex_enhance(crop: np.ndarray, sigma: int = 30) -> np.ndarray:
+    """
+    Retinex 增强（单尺度 SSR）。
+
+    分离光照和反射，去除光照影响。适合去雾、去阴影。
+
+    Args:
+        crop: BGR 图像。
+        sigma: 高斯模糊标准差（越大去除的光照范围越广）。
+    """
+    if crop.ndim == 3:
+        # 逐通道处理
+        result = crop.copy()
+        for c in range(3):
+            channel = crop[:, :, c].astype(np.float64) + 1.0  # +1 避免 log(0)
+            blur = cv2.GaussianBlur(channel, (0, 0), sigma)
+            retinex = np.log1p(channel) - np.log1p(blur)
+            # 归一化到 [0, 255]
+            retinex = (retinex - retinex.min()) / (retinex.max() - retinex.min() + 1e-6) * 255
+            result[:, :, c] = np.clip(retinex, 0, 255).astype(np.uint8)
+        return result
+    else:
+        channel = crop.astype(np.float64) + 1.0
+        blur = cv2.GaussianBlur(channel, (0, 0), sigma)
+        retinex = np.log1p(channel) - np.log1p(blur)
+        retinex = (retinex - retinex.min()) / (retinex.max() - retinex.min() + 1e-6) * 255
+        return np.clip(retinex, 0, 255).astype(np.uint8)
+
+
+def edge_enhance(crop: np.ndarray, strength: float = 0.7) -> np.ndarray:
+    """
+    拉普拉斯边缘增强。
+
+    Args:
+        crop: BGR 图像。
+        strength: 增强强度（越大边缘越明显）。
+    """
+    laplacian = cv2.Laplacian(crop, cv2.CV_64F)
+    enhanced = crop.astype(np.float64) - strength * laplacian
+    return np.clip(enhanced, 0, 255).astype(np.uint8)
+
+
+def tophat_enhance(crop: np.ndarray, kernel_size: int = 15) -> np.ndarray:
+    """
+    顶帽变换（形态学增强）。
+
+    提取亮细节，适合文字增强。
+
+    Args:
+        crop: BGR 图像。
+        kernel_size: 结构元素大小。
+    """
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
+    if crop.ndim == 3:
+        # 逐通道处理
+        result = crop.copy()
+        for c in range(3):
+            tophat = cv2.morphologyEx(crop[:, :, c], cv2.MORPH_TOPHAT, kernel)
+            result[:, :, c] = cv2.add(crop[:, :, c], tophat)
+        return result
+    else:
+        tophat = cv2.morphologyEx(crop, cv2.MORPH_TOPHAT, kernel)
+        return cv2.add(crop, tophat)
+
+
 # ── 算法注册表 ──────────────────────────────────
 
 ALGORITHMS: dict[str, callable] = {
@@ -238,6 +356,11 @@ ALGORITHMS: dict[str, callable] = {
     "unsharp_mask": unsharp_mask,
     "grayscale": grayscale_convert,
     "adaptive_threshold": adaptive_threshold,
+    "gamma_correction": gamma_correction,
+    "contrast_stretching": contrast_stretching,
+    "retinex": retinex_enhance,
+    "edge_enhance": edge_enhance,
+    "tophat": tophat_enhance,
 }
 
 
