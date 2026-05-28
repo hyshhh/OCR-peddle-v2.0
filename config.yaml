@@ -136,15 +136,100 @@ hull_locator:
   #           gamma_correction, contrast_stretching, retinex,
   #           edge_enhance, tophat,
   #           shadow_adjust, exposure_adjust, contrast_adjust
+  # 当前启用的预处理流水线（按顺序执行）
   preprocess_steps:
     - name: "shadow_adjust"
-      params: { shadow_amount: 50 }
+      params: { shadow_amount: 50 }     # 0-100，提亮暗区程度
     - name: "wavelet_denoise"
-      params: { level: 1, threshold: 12.0 }
+      params: { level: 1, threshold: 12.0 }  # level: 分解层数(1-3), threshold: 去噪阈值(越大越强)
     - name: "convolution_sharpen"
-      params: { strength: 2.0, kernel_size: 7 }
-    - name: "edge_enhance"
-    - name: "retinex"
+      params: { strength: 2.0, kernel_size: 7 }  # strength: 锐化强度, kernel_size: 核大小(奇数)
+    - name: "edge_enhance"               # 拉普拉斯边缘增强（默认参数）
+    - name: "retinex"                    # Retinex 去光照（默认 sigma=30）
+
+  # ── 所有可选算法及参数 ──
+  #
+  # --- 去噪类 ---
+  # - name: "wavelet_denoise"          # 小波变换去噪
+  #   params: { method: "haar", level: 1, threshold: 10.0 }
+  #     method: 小波基函数 ("haar", "db1", "db2")
+  #     level: 分解层数，1-3（越大越模糊）
+  #     threshold: 去噪阈值，10-50（越大越强）
+  #
+  # - name: "gaussian_blur"            # 高斯模糊去噪
+  #   params: { ksize: 3, sigma: 1.0 }
+  #     ksize: 核大小，奇数（3-7）
+  #     sigma: 标准差（0.5-2.0）
+  #
+  # - name: "median_blur"              # 中值滤波（椒盐噪声效果好）
+  #   params: { ksize: 3 }
+  #     ksize: 核大小，奇数（3-7）
+  #
+  # - name: "bilateral_denoise"        # 双边滤波（保边去噪）
+  #   params: { d: 9, sigma_color: 75, sigma_space: 75 }
+  #     d: 像素邻域直径（5-15）
+  #     sigma_color: 颜色标准差（50-150）
+  #     sigma_space: 空间标准差（50-150）
+  #
+  # --- 锐化类 ---
+  # - name: "convolution_sharpen"      # 卷积锐化（Unsharp Mask）
+  #   params: { strength: 1.5, kernel_size: 3 }
+  #     strength: 锐化强度（0.5-3.0）
+  #     kernel_size: 核大小，奇数（3-7）
+  #
+  # - name: "unsharp_mask"             # USM 锐化
+  #   params: { sigma: 1.0, strength: 1.5 }
+  #     sigma: 模糊范围（0.5-3.0）
+  #     strength: 锐化强度（0.5-3.0）
+  #
+  # - name: "edge_enhance"             # 拉普拉斯边缘增强
+  #   params: { strength: 0.7 }
+  #     strength: 增强强度（0.3-1.5）
+  #
+  # --- 对比度/亮度类 ---
+  # - name: "clahe_enhance"            # CLAHE 自适应对比度增强
+  #   params: { clip_limit: 2.0, grid_size: 8 }
+  #     clip_limit: 对比度限制（1.0-4.0）
+  #     grid_size: 网格大小（4-16）
+  #
+  # - name: "contrast_stretching"      # 对比度拉伸（线性归一化）
+  #   params: { low_percent: 2.0, high_percent: 98.0 }
+  #     low_percent: 低百分位（0-10）
+  #     high_percent: 高百分位（90-100）
+  #
+  # - name: "gamma_correction"         # Gamma 亮度校正
+  #   params: { gamma: 1.0 }
+  #     gamma: <1 变亮，>1 变暗（0.3-3.0）
+  #
+  # - name: "exposure_adjust"          # 曝光调节
+  #   params: { exposure: 0 }
+  #     exposure: -100~100（负值变暗，正值变亮）
+  #
+  # - name: "contrast_adjust"          # 对比度调节
+  #   params: { contrast: 0 }
+  #     contrast: -100~100（负值降低，正值增强）
+  #
+  # --- 阴影/光照类 ---
+  # - name: "shadow_adjust"            # 阴影调节（提亮暗区）
+  #   params: { shadow_amount: 50 }
+  #     shadow_amount: 0-100（提亮程度）
+  #
+  # - name: "retinex"                  # Retinex 增强（去雾/去阴影）
+  #   params: { sigma: 30 }
+  #     sigma: 10-50（去除的光照范围）
+  #
+  # --- 形态学类 ---
+  # - name: "tophat"                   # 顶帽变换（文字增强）
+  #   params: { kernel_size: 15 }
+  #     kernel_size: 结构元素大小（11-21）
+  #
+  # --- 二值化类 ---
+  # - name: "adaptive_threshold"       # 自适应阈值二值化
+  #   params: { block_size: 11, c: 2 }
+  #     block_size: 邻域大小，奇数（11-31）
+  #     c: 常数偏移（2-10）
+  #
+  # - name: "grayscale"                # 灰度转换（无参数）
 
   # ═══════════════════════════════════════════
   # PaddleOCR 检测器参数（detector_type: "paddle" 时生效）
