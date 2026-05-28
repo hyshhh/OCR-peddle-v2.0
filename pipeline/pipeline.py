@@ -238,6 +238,7 @@ class ShipPipeline:
                         track_id=det.track_id,
                     )
                     det.hull_number_boxes = [r.bbox_frame for r in regions]
+                    det.hull_number_labels = [r.label for r in regions]
                 if regions:
                     scores_str = ", ".join(f"{r.confidence:.3f}" for r in regions)
                     logger.info("Track %d: 弦号定位到 %d 个区域 (精度: %s)", det.track_id, len(regions), scores_str)
